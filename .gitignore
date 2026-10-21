@@ -1,0 +1,44 @@
+# Python 缓存与构建产物
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 测试 / 调试残留
+test-*.png
+test-*.html
+trigger.js
+.hypothesis/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 本地临时目录（Skill 抽卡的 ledger/中间产物）
+tmp/
+/tmp/
+
+# 网页构建中产物（docs/index.html 是构建产物，但与 hero 图片一并打包上传方便 GitHub Pages 部署；
+# 如果你只想保留源码并通过 CI 构建，可以取消下面这两行）
+# docs/index.html
+# docs/assets/
+
+# 发布目录（web-site 是 workbuddy_sites_deploy 的本地中转，源码已经复制到 docs/，不需要上传）
+web-site/
+
+# 本地编辑器与系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 工作区元数据（不应入库）
+.workbuddy/
+*.blend
+
+# 用户本地账本（如果误留在仓库根）
+ledger.json
+# 部署构建产物（由 deploy/build_deploy.py 生成）
+deploy/app-dist/
