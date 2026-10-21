@@ -19,7 +19,7 @@
 - 选 **No expiration** 或 30 天
 - 勾选 **`repo`** 权限
 - 生成后**立即复制**（只显示一次）
-- Token 格式：`ghp_xxxxxxxx` 开头
+- Token 格式：40+ 位随机字符串（GitHub 设置页生成后只显示一次）
 
 ---
 
@@ -52,7 +52,7 @@ git push -u origin main
 
 GitHub 会要求登录，按提示输入：
 - 用户名（您的 GitHub 用户名）
-- **Personal Access Token**（不是密码！格式 `ghp_xxxx`，不会显示）
+- **Personal Access Token**（不是密码！粘贴时不会回显任何字符）
 
 ### 3. 验证
 
@@ -114,6 +114,6 @@ git push
 | 报错 | 解决 |
 |---|---|
 | `Permission denied (publickey)` | SSH 密钥未配置；改用 HTTPS + Personal Access Token |
-| `support for password authentication was removed` | GitHub 已禁用密码登录，必须用 Token（`ghp_xx`） |
+| `support for password authentication was removed` | GitHub 已禁用密码登录，必须用 Personal Access Token |
 | `Updates were rejected` | 远程已有内容，先 `git pull --rebase origin main` 再 push |
 | 中文文件名乱码 | `git config --global core.quotePath false` |
