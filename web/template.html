@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>麦卡收藏家 · 麦当劳抽卡</title>
+<meta name="description" content="基于麦当劳 MCP 数据的卡牌收集玩法：按健康度分级SSR/UR/R，标注价格与卡路里，积分每4小时恢复。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* 横幅背景图：桌面端与移动端各一张，避免移动端拉伸变形 */
+@media(min-width:621px){ .hero-bg{background-image:url(assets/hero.jpg)} }
+@media(max-width:620px){ .hero-bg{background-image:url(assets/hero-mobile.jpg)} }
+</style>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+ /* 麦当劳品牌色 */
+ --mcd-red:#DA291C;--mcd-red-d:#8E1509;--mcd-gold:#FFC72C;--mcd-gold-d:#E09A00;
+ /* 稀有度主题 */
+ --ssr-a:#FFE9A8;--ssr-b:#FFC72C;--ssr-c:#FF7A00;
+ --ur-a:#FFD3E4;--ur-b:#FF5C9D;--ur-c:#B3155E;
+ --r-a:#CFE4FF;--r-b:#5AA9F0;--r-c:#1B5FA8;
+ --bg:#140705;--txt:#FFF4E8;--dim:#C9A28E;
+ --safe-b:env(safe-area-inset-bottom,0px);
+ --font:"PingFang SC","HarmonyOS Sans SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+ /* 展示字体：Orbitron 用于数值（科技感几何体），Rajdhani 用于拉丁标签 */
+ --f-num:"Orbitron","Rajdhani",ui-monospace,"SF Mono",var(--font);
+ --f-lab:"Rajdhani","PingFang SC","Microsoft YaHei",var(--font);
+}
+body{
+ font-family:var(--font);
+ background:var(--bg);color:var(--txt);min-height:100vh;padding:0 0 calc(34px + var(--safe-b));
+ -webkit-tap-highlight-color:transparent;
+ background-image:
+  radial-gradient(ellipse 70% 40% at 50% -8%,rgba(255,199,44,.16),transparent 70%),
+  radial-gradient(ellipse 60% 45% at 12% 30%,rgba(218,41,28,.15),transparent 70%),
+  radial-gradient(ellipse 60% 45% at 88% 62%,rgba(255,92,157,.10),transparent 70%);
+ background-attachment:fixed;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+
+/* ============ 顶部 Hero 横幅 ============ */
+.hero{position:relative;margin:0 -16px 22px;padding:0;
+ height:250px;overflow:hidden;
+ border-bottom:3px solid rgba(255,199,44,.32)}
+/* 背景层：默认纯 CSS 渐变，替换为生图后走 .hero.has-img */
+.hero-bg{position:absolute;inset:0;z-index:0;
+ background:
+  radial-gradient(ellipse 58% 90% at 76% 46%,rgba(255,199,44,.28),transparent 62%),
+  radial-gradient(ellipse 52% 84% at 92% 78%,rgba(218,41,28,.30),transparent 66%),
+  radial-gradient(ellipse 46% 76% at 60% 20%,rgba(255,92,157,.14),transparent 66%),
+  linear-gradient(160deg,#1E0B07,#140705 55%,#0D0403)}
+.hero.has-img .hero-bg{background-size:cover;background-position:center right}
+/* 左侧压暗，保证文字可读 */
+.hero::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+ background:linear-gradient(90deg,rgba(14,5,3,.97) 0%,rgba(14,5,3,.93) 38%,
+   rgba(14,5,3,.62) 62%,rgba(14,5,3,.18) 100%)}
+
+/* 金色粒子层（覆盖在背景图上，增加呼吸感） */
+.hero-cards{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+.hero-cards i{position:absolute;border-radius:50%;
+ background:radial-gradient(circle,rgba(255,238,190,.95),rgba(255,199,44,.5) 42%,transparent 72%);
+ box-shadow:0 0 10px rgba(255,199,44,.6);
+ animation-name:hcFloat;animation-timing-function:ease-in-out;
+ animation-iteration-count:infinite;animation-direction:alternate}
+@keyframes hcFloat{
+ 0%{transform:translateY(0) scale(.7);opacity:.2}
+ 50%{opacity:.85}
+ 100%{transform:translateY(-38px) scale(1.15);opacity:.05}
+}
+
+/* ============ Hero 内的餐品图鉴轮播 ============ */
+.hero-shelf{position:absolute;right:4.5%;top:50%;transform:translateY(-50%);z-index:4;
+ display:flex;align-items:center;gap:11px;pointer-events:none}
+.hs-card{width:78px;height:112px;border-radius:10px;position:relative;overflow:hidden;
+ background:linear-gradient(160deg,#3A1A10,#1A0A06);
+ border:1.5px solid rgba(255,199,44,.3);
+ box-shadow:0 8px 24px rgba(0,0,0,.55);
+ transition:transform .5s cubic-bezier(.34,1.4,.64,1),box-shadow .3s,opacity .3s}
+.hs-card:nth-child(1){transform:rotate(-9deg) translateY(10px);opacity:.62;z-index:1}
+.hs-card:nth-child(3){transform:rotate(9deg) translateY(10px);opacity:.62;z-index:1}
+.hs-card img{width:100%;height:100%;object-fit:cover;display:block}
+.hs-card::after{content:"";position:absolute;inset:0;
+ background:linear-gradient(180deg,transparent 48%,rgba(18,7,4,.9) 100%)}
+/* 未收集：剪影 + 锁 */
+.hs-card.locked img{filter:grayscale(1) brightness(.3) contrast(.7)}
+.hs-card.locked::before{content:"🔒";position:absolute;inset:0;z-index:3;
+ display:flex;align-items:center;justify-content:center;font-size:20px;
+ filter:drop-shadow(0 2px 6px rgba(0,0,0,.7))}
+.hs-name{position:absolute;left:5px;right:5px;bottom:5px;z-index:4;
+ font-size:8.5px;font-weight:700;color:#FFE9B8;text-align:center;line-height:1.2;
+ text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.hs-rar{position:absolute;top:4px;left:4px;z-index:4;font-family:var(--f-num);
+ font-size:8px;font-weight:900;letter-spacing:.5px;color:#2A0E04;
+ padding:1px 5px;border-radius:3px 6px 6px 3px;transform:skewX(-8deg)}
+.hs-mid .hs-card:nth-child(2){width:104px;height:150px;
+ border-color:var(--mcd-gold);
+ box-shadow:0 14px 36px rgba(0,0,0,.6),0 0 40px rgba(255,199,44,.42)}
+.hs-mid .hs-card:nth-child(2) .hs-name{font-size:10px}
+.hs-mid .hs-card:nth-child(2) .hs-rar{font-size:9.5px;padding:2px 6px}
+.hero:hover .hs-card:nth-child(1){transform:rotate(-13deg) translateY(4px)}
+.hero:hover .hs-mid .hs-card:nth-child(2){transform:translateY(-8px)}
+.hero:hover .hs-card:nth-child(3){transform:rotate(13deg) translateY(4px)}
+
+/* 文案层 */
+.hero-txt{position:relative;z-index:3;padding:44px 16px 0;max-width:640px}
+.hero-txt h1{margin:0;font-size:40px;font-weight:900;letter-spacing:3px;color:#fff;
+ text-shadow:0 3px 0 var(--mcd-red-d),0 2px 10px rgba(0,0,0,.7),0 10px 30px rgba(0,0,0,.5)}
+.hero-en{margin-top:10px;font-family:var(--f-num);font-size:12.5px;font-weight:700;
+ letter-spacing:5.5px;color:var(--mcd-gold);text-shadow:0 2px 8px rgba(0,0,0,.7)}
+.hero-slogan{margin:14px 0 0;font-size:14.5px;letter-spacing:1.2px;color:#FFD9A0;
+ text-shadow:0 2px 8px rgba(0,0,0,.8)}
+.store-tag{display:inline-block;margin-top:15px;font-size:11px;color:#FFDCA8;
+  background:rgba(0,0,0,.28);border:1px solid rgba(255,201,44,.34);
+  padding:7px 14px;border-radius:999px;cursor:pointer;
+  transition:.2s;backdrop-filter:blur(6px);max-width:100%;}
+.store-tag:hover{border-color:rgba(255,201,44,.75);background:rgba(0,0,0,.42);}
+.store-tag.sel{border-color:#FFC72C;color:#FFE9B0;}
+
+/* ---------- 门店选择 / 下单弹窗 ---------- */
+.mask{position:fixed;inset:0;background:rgba(12,8,4,.82);backdrop-filter:blur(8px);
+  display:none;align-items:center;justify-content:center;z-index:900;padding:18px;
+  font-family:var(--ui-fallback);}
+.mask.on{display:flex;}
+.sheet{width:100%;max-width:440px;max-height:88vh;overflow-y:auto;
+  background:linear-gradient(165deg,#241608,#150d05);
+  border:1px solid rgba(255,201,44,.36);border-radius:20px;padding:22px;
+  box-shadow:0 26px 70px rgba(0,0,0,.72),inset 0 1px 0 rgba(255,255,255,.07);}
+.sheet h3{margin:0 0 4px;font-size:17px;color:#FFD98A;letter-spacing:.6px;}
+.sheet .sub{font-size:11.5px;color:#B79A72;margin-bottom:15px;line-height:1.6;}
+.field{margin-bottom:11px;}
+.field label{display:block;font-size:10.5px;letter-spacing:1.4px;
+  text-transform:uppercase;color:#C0A075;margin-bottom:5px;}
+.field input,.field select{width:100%;padding:10px 12px;border-radius:11px;
+  background:rgba(0,0,0,.36);border:1px solid rgba(255,201,44,.24);
+  color:#FFE9C4;font-size:14px;outline:none;font-family:inherit;}
+.field input:focus,.field select:focus{border-color:#FFC72C;}
+.segs{display:flex;gap:8px;}
+.seg{flex:1;padding:9px 6px;border-radius:11px;text-align:center;font-size:12.5px;
+  background:rgba(0,0,0,.3);border:1px solid rgba(255,201,44,.2);color:#CDB188;
+  cursor:pointer;transition:.18s;}
+.seg.on{background:linear-gradient(135deg,#FFC72C,#FF9E1B);color:#2A1A06;
+  font-weight:700;border-color:transparent;}
+.sbtn{width:100%;margin-top:6px;padding:12px;border:none;border-radius:13px;
+  background:linear-gradient(135deg,#FFC72C,#FF9E1B);color:#2A1A06;
+  font-size:14.5px;font-weight:800;letter-spacing:.6px;cursor:pointer;font-family:inherit;
+  box-shadow:0 8px 22px rgba(255,158,27,.3);}
+.sbtn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.sbtn.ghost{background:rgba(255,255,255,.07);color:#E7D3AE;
+  border:1px solid rgba(255,201,44,.28);box-shadow:none;margin-top:9px;}
+.slist{margin-top:14px;display:flex;flex-direction:column;gap:8px;}
+.sitem{padding:12px 13px;border-radius:13px;cursor:pointer;
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,201,44,.16);
+  transition:.18s;text-align:left;color:inherit;font-family:inherit;}
+.sitem:hover{border-color:rgba(255,201,44,.55);background:rgba(255,201,44,.09);}
+.sitem.on{border-color:#FFC72C;background:rgba(255,201,44,.15);}
+.sitem .nm{font-size:13.5px;color:#FFE9C4;font-weight:600;line-height:1.4;}
+.sitem .mt{font-size:11px;color:#AE9068;margin-top:3px;
+  display:flex;gap:9px;flex-wrap:wrap;}
+.sitem .dist{color:#FFC72C;font-weight:700;}
+.hint{font-size:11.5px;color:#B08A55;margin-top:12px;line-height:1.65;
+  padding-top:11px;border-top:1px solid rgba(255,201,44,.16);}
+.hint b{color:#FFD98A;}
+.err{background:rgba(200,50,40,.16);border:1px solid rgba(255,90,80,.4);
+  color:#FFB3A8;padding:10px 12px;border-radius:11px;font-size:12.5px;
+  margin-top:11px;line-height:1.55;}
+.sum{background:rgba(0,0,0,.32);border:1px solid rgba(255,201,44,.24);
+  border-radius:14px;padding:14px;margin-top:13px;}
+.sum .ln{display:flex;justify-content:space-between;font-size:12.5px;
+  color:#C9AF87;padding:4px 0;}
+.sum .ln.tot{border-top:1px dashed rgba(255,201,44,.28);margin-top:7px;
+  padding-top:9px;font-size:15px;color:#FFD98A;font-weight:800;}
+.ok{text-align:center;padding:8px 0;}
+.ok .tick{font-size:40px;line-height:1;}
+.ok .oid{font-family:var(--mono);font-size:12.5px;color:#FFD98A;
+  background:rgba(0,0,0,.35);padding:9px;border-radius:10px;margin:12px 0;
+  word-break:break-all;}
+.paylink{display:block;width:100%;padding:13px;border:none;border-radius:13px;
+  background:linear-gradient(135deg,#DA291C,#FF6B35);color:#fff;font-size:15px;
+  font-weight:800;cursor:pointer;text-decoration:none;text-align:center;font-family:inherit;
+  box-shadow:0 8px 22px rgba(218,41,28,.34);margin-top:6px;}
+@media(max-width:480px){ .sheet{padding:18px;border-radius:17px;} }
+ background:rgba(218,41,28,.34);border:1px solid rgba(255,199,44,.36);
+ padding:5px 13px;border-radius:20px;font-family:var(--f-lab);letter-spacing:.5px}
+
+/* ============ 积分条 ============ */
+.points{
+ position:sticky;top:0;z-index:60;margin:0 -16px 20px;padding:11px 16px;
+ background:rgba(20,7,5,.96);backdrop-filter:blur(14px);
+ border-bottom:1px solid rgba(255,199,44,.22);
+ display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pt-num{font-family:var(--f-num);font-size:26px;font-weight:900;color:var(--mcd-gold);
+ line-height:1;letter-spacing:.5px;text-shadow:0 0 16px rgba(255,199,44,.55)}
+.pt-lab{font-family:var(--f-lab);font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:1px}
+/* 刷新积分按钮 */
+.pt-refill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;
+ padding:8px 15px 8px 12px;border:none;border-radius:20px;cursor:pointer;
+ font-family:var(--f-lab);font-size:12.5px;font-weight:700;letter-spacing:.6px;
+ color:#3A1408;background:linear-gradient(120deg,#FFD45E,var(--mcd-gold) 55%,#F09400);
+ box-shadow:0 3px 10px rgba(255,160,0,.34),inset 0 1px 0 rgba(255,255,255,.44);
+ transition:.18s;position:relative;overflow:hidden}
+.pt-refill svg{width:15px;height:15px;transition:transform .5s cubic-bezier(.34,1.5,.64,1)}
+.pt-refill:hover{filter:brightness(1.08);transform:translateY(-1px);
+ box-shadow:0 5px 14px rgba(255,160,0,.44),inset 0 1px 0 rgba(255,255,255,.44)}
+.pt-refill:hover svg{transform:rotate(180deg)}
+.pt-refill:active{transform:translateY(1px)}
+.pt-refill.full{filter:saturate(.4) brightness(.82);cursor:default;
+ box-shadow:0 2px 6px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.2)}
+.pt-refill.full:hover{transform:none;filter:saturate(.4) brightness(.82)}
+.pt-refill.full:hover svg{transform:none}
+.pt-refill.cool{pointer-events:none}
+.pt-refill.cool::after{content:"";position:absolute;inset:0;background:rgba(20,7,5,.42)}
+.pt-refill.cool svg{position:relative;z-index:2}
+
+/* ============ 控制台 · 紧凑工具条 ============ */
+.ctrl{
+ background:linear-gradient(120deg,rgba(46,18,12,.72),rgba(24,9,6,.62));
+ border:1px solid rgba(255,199,44,.16);border-radius:14px;
+ padding:13px 15px;margin-bottom:20px;
+ box-shadow:0 3px 14px rgba(0,0,0,.34),inset 0 1px 0 rgba(255,255,255,.045)}
+.ctrl-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.field{flex:1;min-width:210px}
+.field label{display:block;font-family:var(--f-lab);font-size:10px;color:#C98F6A;
+ margin-bottom:6px;letter-spacing:1.4px;font-weight:700;text-transform:uppercase}
+/* 输入框与分段按钮同一行 */
+.ctrl-in{display:flex;align-items:stretch;gap:7px}
+.ctrl-in input{
+ flex:none;width:74px;padding:8px 10px;font-family:var(--f-num);
+ font-size:14px;font-weight:700;
+ background:rgba(0,0,0,.44);border:1px solid rgba(255,199,44,.2);
+ border-radius:9px;color:var(--mcd-gold);outline:none;text-align:center;
+ transition:.18s}
+.ctrl-in input::placeholder{color:#7A5A48;font-size:12px;font-weight:600}
+.ctrl-in input:focus{border-color:var(--mcd-gold);
+ box-shadow:0 0 0 2.5px rgba(255,199,44,.16);background:rgba(0,0,0,.6)}
+
+/* 分段控制器 */
+.segs{display:flex;flex:1;gap:3px;padding:3px;border-radius:10px;
+ background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.055)}
+.seg{
+ flex:1;padding:7px 4px;border:none;border-radius:7px;cursor:pointer;
+ background:transparent;color:#B08D7C;font-family:var(--f-lab);
+ font-size:12px;font-weight:700;letter-spacing:.4px;
+ transition:.18s;white-space:nowrap;min-width:0}
+.seg:hover{background:rgba(255,199,44,.1);color:#FFD9A0}
+.seg.on{background:linear-gradient(140deg,var(--mcd-gold),#E09A00);
+ color:#3A1408;box-shadow:0 2px 8px rgba(255,199,44,.36);
+ font-weight:700;letter-spacing:.5px}
+
+/* 主按钮 */
+.btn-draw{
+ width:100%;margin-top:11px;padding:14px;border:none;border-radius:11px;
+ font-family:var(--f-num);font-size:16px;font-weight:900;letter-spacing:5px;
+ cursor:pointer;color:#3A1408;position:relative;overflow:hidden;
+ background:linear-gradient(100deg,#FFD45E 0%,var(--mcd-gold) 42%,#FF9A1F 100%);
+ box-shadow:0 5px 0 #A33A12,0 8px 22px rgba(255,138,0,.34);
+ transition:.16s;text-shadow:0 1px 0 rgba(255,255,255,.34)}
+.btn-draw .bd{position:relative;z-index:2}
+.btn-draw::after{content:"";position:absolute;inset:0;z-index:1;
+ background:linear-gradient(100deg,transparent 34%,rgba(255,255,255,.5) 50%,transparent 66%);
+ transform:translateX(-120%);transition:transform .6s ease}
+.btn-draw:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-2px);
+ box-shadow:0 7px 0 #A33A12,0 12px 28px rgba(255,138,0,.42)}
+.btn-draw:hover:not(:disabled)::after{transform:translateX(120%)}
+.btn-draw:active:not(:disabled){transform:translateY(3px);
+ box-shadow:0 2px 0 #A33A12,0 5px 14px rgba(255,138,0,.3)}
+/* 禁用态：保留品牌色，降饱和而非死灰 */
+.btn-draw:disabled{
+ background:linear-gradient(100deg,#5A3A26,#43301F);
+ color:#A8866E;cursor:not-allowed;
+ box-shadow:0 3px 0 #2A1A10;text-shadow:none;border:1px solid rgba(255,199,44,.14)}
+.btn-draw:disabled .bd{opacity:.8}
+
+.hint{margin-top:9px;text-align:center;font-size:11px;color:#A8806F;line-height:1.6;
+ letter-spacing:.3px}
+.hint b{color:var(--mcd-gold)}
+.hint .warn{color:#FFB27A;font-weight:700}
+
+/* ============ 统计：页面最下的一条细窄数据带 ============ */
+.stats{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+ gap:7px 15px;margin:26px auto 0;padding:11px 18px;width:fit-content;max-width:100%;
+ background:linear-gradient(180deg,rgba(255,199,44,.1),rgba(218,41,28,.06));
+ border:1px solid rgba(255,199,44,.2);border-radius:20px}
+.stat{display:flex;align-items:baseline;gap:4px;white-space:nowrap}
+.stat .v{font-family:var(--f-num);font-size:14px;font-weight:900;color:var(--mcd-gold);
+ line-height:1;letter-spacing:.2px}
+.stat .k{font-family:var(--f-lab);font-size:10px;color:var(--dim);letter-spacing:.6px}
+.stat.ssr .v{color:var(--ssr-b)}.stat.ur .v{color:var(--ur-b)}.stat.r .v{color:var(--r-b)}
+.stat.combo .v{color:var(--mcd-red)}
+
+/* ============ 分区标题 ============ */
+.st{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:900;
+ margin:26px 0 15px;color:var(--mcd-gold);letter-spacing:.6px}
+.st::before{content:"";width:5px;height:17px;
+ background:linear-gradient(180deg,var(--mcd-gold),var(--mcd-red));border-radius:2px}
+.st small{margin-left:auto;font-size:11.5px;color:var(--dim);font-weight:500}
+
+/* ============ 卡牌 · 二次元游戏风 ============ */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(174px,1fr));gap:15px}
+
+.card{position:relative;border-radius:17px;padding:3px;cursor:pointer;
+ transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;transform-style:preserve-3d}
+.card:hover{transform:translateY(-8px) scale(1.025);z-index:5}
+.card:active{transform:scale(.975)}
+
+.card-in{
+ position:relative;border-radius:14px;overflow:hidden;min-height:322px;
+ display:flex;flex-direction:column;
+ box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 -30px 46px rgba(0,0,0,.42)}
+
+/* 稀有度主题变量注入点 */
+.t-SSR{--c1:var(--ssr-a);--c2:var(--ssr-b);--c3:var(--ssr-c);--gl:rgba(255,199,44,.72)}
+.t-UR {--c1:var(--ur-a); --c2:var(--ur-b); --c3:var(--ur-c);--gl:rgba(255,92,157,.55)}
+.t-R  {--c1:var(--r-a);  --c2:var(--r-b); --c3:var(--r-c); --gl:rgba(90,169,240,.44)}
+
+/* --- 卡面图片区：主体，不被任何元素遮挡 --- */
+.art{position:relative;width:100%;height:158px;flex:none;overflow:hidden;
+ background:linear-gradient(155deg,var(--c3),#120704)}
+.art img{width:100%;height:100%;object-fit:cover;display:block;
+ transition:transform .5s cubic-bezier(.34,1.3,.64,1)}
+.card:hover .art img{transform:scale(1.07)}
+.art::after{content:"";position:absolute;inset:0;pointer-events:none;
+ background:linear-gradient(180deg,transparent 46%,rgba(18,7,4,.88) 100%)}
+/* 图片为白底商品图时，加一层暖色调适配 */
+.art::before{content:"";position:absolute;inset:0;z-index:1;
+ background:radial-gradient(ellipse at 50% 42%,transparent 52%,rgba(18,7,4,.34) 100%)}
+.art .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+ font-size:46px;z-index:2}
+
+/* --- 稀有度角标：斜切横幅，醒目 --- */
+.rar-tag{
+ position:absolute;top:10px;left:9px;z-index:6;
+ display:flex;align-items:center;gap:4px;padding:4px 13px 4px 10px;
+ font-family:var(--f-num);font-size:12.5px;font-weight:900;letter-spacing:1.6px;color:#2A0E04;
+ background:linear-gradient(120deg,var(--c1),var(--c2) 52%,var(--c3));
+ border-radius:4px 11px 11px 4px;
+ box-shadow:0 3px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.5);
+ transform:skewX(-9deg)}
+.rar-tag span{transform:skewX(9deg)}
+.card.t-SSR .rar-tag{animation:rarGlow 2.1s ease-in-out infinite}
+@keyframes rarGlow{
+ 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 0 0 rgba(255,199,44,.55),inset 0 1px 0 rgba(255,255,255,.5)}
+ 50%    {box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 18px 5px rgba(255,199,44,.42),inset 0 1px 0 rgba(255,255,255,.5)}
+}
+/* SSR额外角标光点 */
+.card.t-SSR .rar-tag::after{
+ content:"";position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;
+ background:radial-gradient(circle,#fff,var(--mcd-gold));box-shadow:0 0 12px 3px rgba(255,231,168,.9)}
+
+/* --- 卡名：压在图片下沿渐变上，不遮主体 --- */
+.cn{position:absolute;left:11px;right:11px;bottom:8px;z-index:5;
+ font-size:15px;font-weight:900;line-height:1.26;color:#fff;letter-spacing:.3px;
+ text-shadow:0 2px 6px rgba(0,0,0,.95),0 0 14px rgba(0,0,0,.75)}
+.cn .tier{display:inline-block;margin-left:5px;font-family:var(--f-lab);
+ font-size:9.5px;font-weight:700;letter-spacing:.6px;
+ color:#3A1408;background:linear-gradient(120deg,var(--c1),var(--c2));
+ padding:1.5px 7px;border-radius:20px;vertical-align:middle;
+ text-shadow:none;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+/* 套餐标签：品牌红金，区别于品类标签 */
+.cn .tier.combo{color:#fff;background:linear-gradient(120deg,var(--mcd-gold),var(--mcd-red));
+ padding:2px 8px;font-weight:700;letter-spacing:.8px;
+ box-shadow:0 2px 8px rgba(218,41,28,.5),inset 0 1px 0 rgba(255,255,255,.34)}
+
+/* --- 数据区：独立面板，脱离图片 --- */
+.panel{flex:1;padding:11px 11px 12px;
+ background:linear-gradient(180deg,rgba(18,7,4,.5),rgba(18,7,4,.9))}
+.price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:9px}
+.price{font-family:var(--f-num);font-size:21px;font-weight:900;color:var(--mcd-gold);
+ line-height:1;letter-spacing:.5px;text-shadow:0 0 16px rgba(255,199,44,.55)}
+.price-unit{font-family:var(--f-lab);font-size:9.5px;color:var(--dim);font-weight:700;
+ letter-spacing:.8px}
+
+/* 四项营养：2×2 网格 */
+.nutri{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.nu{background:rgba(0,0,0,.42);border-radius:9px;padding:6px 8px;
+ border:1px solid rgba(255,255,255,.07)}
+.nu .v{font-family:var(--f-num);font-size:13.5px;font-weight:900;line-height:1.15;
+ display:flex;align-items:baseline;gap:2px;letter-spacing:.2px}
+.nu .u{font-family:var(--f-lab);font-size:9px;font-weight:700;opacity:.7;letter-spacing:.3px}
+.nu .k{font-size:9.5px;color:var(--dim);margin-top:2px;letter-spacing:.4px}
+.nu.kcal .v{color:#8FD3FF}.nu.protein .v{color:#8FE9A0}
+.nu.sodium .v{color:#FFAFA0}.nu.fat .v{color:#FFD08A}
+
+/* ---- 健康度徽章：右上角，含迷你进度弧 ---- */
+.score{
+ position:absolute;top:8px;right:8px;z-index:7;
+ width:50px;height:50px;border-radius:50%;
+ display:flex;align-items:center;justify-content:center;
+ background:radial-gradient(circle at 50% 42%,rgba(28,12,8,.96),rgba(12,5,3,.98));
+ border:1.5px solid var(--c2);
+ box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 16px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
+.score svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.score .tr{fill:none;stroke:rgba(255,255,255,.1);stroke-width:3.4}
+.score .pg{fill:none;stroke-width:3.4;stroke-linecap:round;
+ stroke:url(#sgrad);filter:drop-shadow(0 0 3px var(--gl))}
+.score .inner{position:relative;z-index:2;text-align:center;line-height:1}
+.score .num{font-family:var(--f-num);font-size:16px;font-weight:900;color:#fff;
+ letter-spacing:-.3px;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.score .cap{font-family:var(--f-lab);font-size:7px;font-weight:700;letter-spacing:.7px;
+ color:var(--c1);margin-top:2px}
+.card.t-SSR .score{animation:scoreGlow 2.1s ease-in-out infinite}
+@keyframes scoreGlow{
+ 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 14px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
+ 50%    {box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 24px 6px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
+}
+
+/* NEW 徽标：右上角分数下方，避免与分数徽章重叠 */
+.new{position:absolute;top:62px;right:8px;z-index:7;
+ background:linear-gradient(120deg,var(--mcd-gold),var(--mcd-gold-d));color:#3A1408;
+ font-family:var(--f-lab);font-size:8.5px;font-weight:700;padding:2.5px 8px;border-radius:20px;
+ letter-spacing:1.1px;box-shadow:0 3px 10px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.5);
+ animation:newPulse 1.5s ease-in-out infinite}
+@keyframes newPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+.dup{position:absolute;bottom:11px;right:11px;z-index:6;font-size:9.5px;font-weight:900;
+ background:rgba(255,199,44,.3);border:1px solid rgba(255,199,44,.44);
+ padding:2px 8px;border-radius:20px;color:#FFE9B8}
+
+.lock{text-align:center;padding:58px 20px;color:#B08D7C;
+ border:2px dashed rgba(255,199,44,.28);border-radius:16px}
+.lock .e{font-size:40px;margin-bottom:12px}
+
+/* ============ 抽卡演出层 ============ */
+.stage{position:fixed;inset:0;z-index:200;display:none;
+ align-items:center;justify-content:center;perspective:1100px}
+.stage.on{display:flex}
+
+/* SSR 全屏金色演出 */
+.ssr-veil{position:absolute;inset:0;pointer-events:none;opacity:0;
+ background:radial-gradient(ellipse at 50% 50%,rgba(255,231,168,.42),transparent 62%)}
+.ssr-veil.on{animation:veil 1.5s ease-out}
+@keyframes veil{0%{opacity:0}22%{opacity:1}100%{opacity:0}}
+
+.rays{position:absolute;width:220vmax;height:220vmax;pointer-events:none;opacity:0;
+ background:repeating-conic-gradient(from 0deg,
+  rgba(255,199,44,.16) 0deg 5deg,transparent 5deg 13deg);
+ animation:spin 9s linear infinite}
+.rays.on{opacity:1;animation:spin 9s linear infinite,rayIn 1.2s ease-out}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes rayIn{0%{opacity:0;transform:scale(.3)}30%{opacity:1}100%{opacity:.34}}
+
+.ssr-burst{position:absolute;width:20px;height:20px;border-radius:50%;
+ background:radial-gradient(circle,#fff,var(--mcd-gold));pointer-events:none;opacity:0}
+@keyframes burst{0%{opacity:1;transform:translate(0,0) scale(1)}
+ 100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.15)}}
+
+/* 翻牌容器 */
+.flip-wrap{position:relative;width:min(80vw,306px);height:min(114vw,458px);
+ perspective:1100px;z-index:3}
+.flip{position:absolute;inset:0;transform-style:preserve-3d;
+ transition:transform .82s cubic-bezier(.34,1.3,.64,1)}
+.flip.go{transform:rotateY(180deg)}
+/* 召唤：卡背飞入落位 */
+.flip.summon{animation:summonIn .68s cubic-bezier(.2,.9,.25,1.05)}
+@keyframes summonIn{
+ 0%{transform:translate3d(0,-42vh,-320px) rotateX(46deg) rotateZ(-24deg);opacity:0}
+ 58%{transform:translate3d(0,8px,0) rotateX(0) rotateZ(4deg);opacity:1}
+ 78%{transform:translate3d(0,-5px,0) rotateZ(-1.4deg)}
+ 100%{transform:translate3d(0,0,0) rotateZ(0)}
+}
+.flip-face{position:absolute;inset:0;border-radius:19px;backface-visibility:hidden;
+ overflow:hidden}
+
+/* 卡背 */
+.back{background:linear-gradient(155deg,var(--mcd-red),var(--mcd-red-d) 62%,#5E0D05);
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ border:3px solid var(--mcd-gold);
+ box-shadow:0 0 0 1px rgba(255,255,255,.12),0 22px 60px rgba(0,0,0,.65),
+            0 0 70px rgba(255,199,44,.34)}
+.back::before{content:"";position:absolute;inset:11px;border-radius:12px;
+ border:1.5px solid rgba(255,199,44,.44)}
+.back .m{font-size:74px;filter:drop-shadow(0 4px 12px rgba(0,0,0,.5))}
+.back .t{color:var(--mcd-gold);font-size:20px;font-weight:900;letter-spacing:5px;
+ margin-top:14px;text-shadow:0 2px 8px rgba(0,0,0,.6)}
+.back .s{color:#FFD9A0;font-size:11.5px;margin-top:7px;letter-spacing:2px}
+
+/* 卡背脉动 */
+.back{animation:backPulse 1.6s ease-in-out infinite}
+@keyframes backPulse{
+ 0%,100%{box-shadow:0 0 0 1px rgba(255,255,255,.12),0 22px 60px rgba(0,0,0,.65),0 0 56px rgba(255,199,44,.26)}
+ 50%    {box-shadow:0 0 0 1px rgba(255,255,255,.12),0 22px 60px rgba(0,0,0,.65),0 0 96px rgba(255,199,44,.55)}
+}
+
+/* 正面（翻开后） */
+.front{transform:rotateY(180deg)}
+.front .card{width:100%;height:100%}
+.front .card-in{height:100%;min-height:0}
+.front .art{height:52%}
+.front .panel{flex:1;display:flex;flex-direction:column;justify-content:center}
+
+/* SSR 额外光效 */
+.front.ssr-show .card-in{box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),
+ inset 0 -30px 46px rgba(0,0,0,.42),0 0 46px rgba(255,199,44,.62)}
+.ssr-word{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+ z-index:10;font-size:76px;font-weight:900;letter-spacing:8px;color:#fff;
+ text-shadow:0 0 22px var(--mcd-gold),0 0 44px var(--mcd-red),0 5px 12px rgba(0,0,0,.6);
+ pointer-events:none;opacity:0}
+.ssr-word.on{animation:ssrWord 1.25s cubic-bezier(.2,.9,.3,1) forwards}
+@keyframes ssrWord{
+ 0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-14deg)}
+ 32%{opacity:1;transform:translate(-50%,-50%) scale(1.18) rotate(3deg)}
+ 46%{transform:translate(-50%,-50%) scale(1) rotate(0)}
+ 78%{opacity:1}
+ 100%{opacity:0;transform:translate(-50%,-50%) scale(1.32)}
+}
+
+.stage-hint{position:absolute;bottom:9%;z-index:12;color:#FFE9B8;font-size:13px;
+ font-weight:700;letter-spacing:2px;opacity:0;pointer-events:none}
+.stage-hint.on{animation:hintIn .6s ease .9s forwards}
+@keyframes hintIn{to{opacity:.92}}
+
+/* UR 演出（较克制） */
+.ur-veil{position:absolute;inset:0;pointer-events:none;opacity:0;
+ background:radial-gradient(ellipse at 50% 50%,rgba(255,92,157,.34),transparent 64%)}
+.ur-veil.on{animation:veil 1.15s ease-out}
+
+/* ============ 弹窗 ============ */
+.modal{position:fixed;inset:0;background:rgba(20,7,5,.94);z-index:120;
+ display:none;align-items:center;justify-content:center;padding:20px}
+.modal.on{display:flex}
+.mbox{background:#1E0B07;border:2px solid rgba(255,199,44,.32);border-radius:17px;
+ padding:22px;max-width:400px;width:100%;max-height:88vh;overflow:auto;
+ box-shadow:0 18px 50px rgba(0,0,0,.6)}
+.mtitle{font-size:18px;font-weight:900;margin-bottom:14px;display:flex;
+ align-items:center;gap:9px;letter-spacing:.4px}
+.mtitle .rr{padding:3px 10px;border-radius:4px 9px 9px 4px;font-size:12px;font-weight:900;
+ transform:skewX(-9deg);color:#2A0E04}
+.mtitle .rr>span{transform:skewX(9deg);display:block}
+.mimg{width:100%;height:168px;object-fit:cover;border-radius:11px;margin-bottom:14px;
+ border:1.5px solid rgba(255,199,44,.26)}
+.mrow{display:flex;justify-content:space-between;padding:9px 0;
+ border-bottom:1px solid rgba(255,199,44,.14);font-size:13.5px}
+.mrow span:first-child{color:var(--dim)}
+.mrow b{font-family:var(--f-num);font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.mnote{font-size:11.5px;color:#C9A794;margin-top:13px;line-height:1.75}
+.mbtns{display:flex;gap:9px;margin-top:18px}
+.mbtns button{flex:1;padding:12px;border:none;border-radius:11px;font-size:14px;
+ font-weight:900;cursor:pointer;font-family:inherit}
+.mb-no{background:rgba(255,255,255,.1);color:var(--txt)}
+.mb-yes{background:linear-gradient(96deg,var(--mcd-gold),var(--mcd-red));color:#fff;
+ box-shadow:0 4px 14px rgba(218,41,28,.44)}
+
+footer{margin-top:42px;padding-top:20px;border-top:2px solid rgba(255,199,44,.2);
+ text-align:center;color:#A8806F;font-size:11.5px;line-height:2}
+footer a{color:var(--mcd-gold);text-decoration:none}
+
+@media(max-width:620px){
+ .wrap{padding:0 12px}
+ .hero{height:176px;margin:0 -12px 18px}
+ .hero-txt{padding:28px 12px 0;max-width:none}
+ .hero-txt h1{font-size:27px;letter-spacing:1.5px}
+ .hero-en{font-size:10px;letter-spacing:3px;margin-top:7px}
+ .hero-slogan{font-size:12px;margin-top:10px}
+ .hero::after{background:linear-gradient(90deg,rgba(14,5,3,.95) 0%,rgba(14,5,3,.86) 55%,rgba(14,5,3,.4) 100%)}
+ .grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:11px}
+ .card-in{min-height:296px}.art{height:142px}
+ .price{font-size:18px}
+ .ctrl{padding:11px 12px;border-radius:12px}
+ .field{min-width:100%}
+ .ctrl-in input{width:66px;padding:7px 8px}
+ .seg{font-size:11.5px;padding:7px 2px}
+ .btn-draw{font-size:15px;letter-spacing:4px;padding:13px}
+ /* 移动端图鉴缩到角落，避免压住标题 */
+ .hero-shelf{right:2.5%;gap:6px;opacity:.85}
+ .hs-card{width:44px;height:64px;border-radius:7px}
+ .hs-card .hs-name{font-size:6.5px;bottom:3px;left:2px;right:2px}
+ .hs-card .hs-rar{font-size:6px;padding:0 3px;top:2px;left:2px}
+ .hs-mid .hs-card:nth-child(2){width:58px;height:84px}
+ .hs-mid .hs-card:nth-child(2) .hs-name{font-size:8px}
+ .pt-refill{padding:6px 11px 6px 9px;font-size:11px;gap:5px}
+ .pt-refill svg{width:13px;height:13px}
+}
+@media(prefers-reduced-motion:reduce){
+ *{animation-duration:.01ms !important;animation-iteration-count:1 !important;
+   transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="sgrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7A00"/>
+      <stop offset="55%" stop-color="#FFC72C"/>
+      <stop offset="100%" stop-color="#FFF3C4"/>
+    </linearGradient>
+  </defs>
+</svg>
+<div class="wrap">
+<header class="hero">
+  <div class="hero-bg" id="heroBg"></div>
+  <div class="hero-cards" aria-hidden="true" id="heroCards"></div>
+  <div class="hero-shelf hs-mid" id="heroShelf" aria-hidden="true"></div>
+  <div class="hero-txt">
+    <h1>麦卡收藏家</h1>
+    <div class="hero-en">MCD GACHA COLLECTOR</div>
+    <p class="hero-slogan">每一张卡，都是一份营养档案</p>
+    <div class="store-tag" id="storeTag">📍 点击选择你附近的麦当劳</div>
+  </div>
+</header>
+
+<!-- ============ 门店选择弹窗 ============ -->
+<div class="mask" id="maskStore">
+  <div class="sheet">
+    <h3>选择附近的麦当劳</h3>
+    <div class="sub">按你的位置实时查询麦当劳官方门店与到店距离</div>
+    <div class="field">
+      <label>城市</label>
+      <input id="inCity" placeholder="例如：北京" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>地点 / 位置关键词</label>
+      <input id="inKw" placeholder="例如：朝阳站 / 万象汇 / 中关村" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>取餐方式</label>
+      <div class="segs" id="segBe">
+        <div class="seg on" data-v="1">到店自取</div>
+        <div class="seg" data-v="5">得来速车道</div>
+      </div>
+    </div>
+    <button class="sbtn" id="btnSearch">查找附近门店</button>
+    <div id="storeErr"></div>
+    <div class="slist" id="storeList"></div>
+    <button class="sbtn ghost" id="btnStoreClose">关闭</button>
+  </div>
+</div>
+
+<!-- ============ 下单确认弹窗 ============ -->
+<div class="mask" id="maskOrder">
+  <div class="sheet">
+    <div id="orderBody"></div>
+  </div>
+</div>
+
+<div class="points">
+  <div><div class="pt-num" id="ptNum">0</div><div class="pt-lab">积分</div></div>
+  <button class="pt-refill" id="btnRefill" title="重置为满额积分">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4"
+            fill="none" stroke="currentColor" stroke-width="2.4"
+            stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>刷新积分</span>
+  </button>
+</div>
+
+<div class="ctrl">
+  <div class="ctrl-row">
+    <div class="field">
+      <label>预算上限</label>
+      <div class="ctrl-in">
+        <input type="number" id="inpBudget" placeholder="不限" min="0" step="1" inputmode="decimal">
+        <div class="segs" id="chipsBudget">
+          <button class="seg on" data-v="">不限</button>
+          <button class="seg" data-v="15">15</button>
+          <button class="seg" data-v="30">30</button>
+          <button class="seg" data-v="50">50</button>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label>抽卡次数</label>
+      <div class="ctrl-in">
+        <input type="number" id="inpDraw" value="1" min="1" max="20" inputmode="numeric">
+        <div class="segs" id="chipsDraw">
+          <button class="seg on" data-v="1">单抽</button>
+          <button class="seg" data-v="5">五连</button>
+          <button class="seg" data-v="10">十连</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="btn-draw" id="btnDraw"><span class="bd">抽 卡</span></button>
+  <div class="hint" id="hint"></div>
+</div>
+
+<div class="st">我的收藏册<small id="colInfo"></small></div>
+<div class="grid" id="colBox"></div>
+
+<!-- 统计：压成一条细窄数据条，置于页面最下 -->
+<div class="stats" id="stats"></div>
+
+<footer id="footer"></footer>
+</div>
+
+<!-- 抽卡演出层 -->
+<div class="stage" id="stage">
+  <div class="ssr-veil" id="ssrVeil"></div>
+  <div class="ur-veil" id="urVeil"></div>
+  <div class="rays" id="rays"></div>
+  <div class="ssr-word" id="ssrWord">SSR</div>
+  <div class="stage-hint" id="stageHint">点击任意处继续</div>
+  <div class="flip-wrap">
+    <div class="flip" id="flip">
+      <div class="flip-face back">
+        <div class="m">🍔</div>
+        <div class="t">麦卡收藏家</div>
+        <div class="s">MCD GACHA</div>
+      </div>
+      <div class="flip-face front" id="flipFront"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this)closeM()">
+  <div class="mbox">
+    <div class="mtitle" id="mTitle"></div>
+    <div id="mBody"></div>
+    <div class="mbtns">
+      <button class="mb-no" onclick="closeM()">关闭</button>
+      <button class="mb-yes" id="mYes">立即购买</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = /*__DATA__*/;
+const META = DATA.meta, CARDS = DATA.cards;
+const LS = "mcd_gacha_v1";
+/* 稀有度配色已迁移到 CSS 变量（.t-SSR / .t-UR / .t-R），此处只保留弹窗用的取色 */
+const RAR = {
+  SSR:{c1:"#FFE9A8", c2:"#FFC72C", c3:"#FF7A00"},
+  UR: {c1:"#FFD3E4", c2:"#FF5C9D", c3:"#B3155E"},
+  R:  {c1:"#CFE4FF", c2:"#5AA9F0", c3:"#1B5FA8"}
+};
+const EMO = {"汉堡":"🍔","卷类":"🌯","小食":"🍟","薯条":"🍟","甜点":"🥧","甜品":"🍦","饮品":"🥤","饮料":"🥤","轻食":"🥗","早餐":"🍳","鸡肉":"🍗","套餐":"🍱"};
+const $ = id => document.getElementById(id);
+
+/* ---------- 积分账本（网页版：不做时间恢复，改为手动刷新重置） ---------- */
+const MAX_POINTS = 30;      // 单次刷新补满的上限
+const COOLDOWN_MS = 60000;  // 刷新冷却，防止连点刷分
+
+let led = load();
+function load(){
+  try{
+    const o = JSON.parse(localStorage.getItem(LS));
+    if(o && typeof o.points === "number") return o;
+  }catch(e){}
+  return {points:META.initialPoints, lastRefill:0, totalDraws:0, collection:[]};
+}
+function save(){ localStorage.setItem(LS, JSON.stringify(led)); }
+
+/** 刷新重置：补满至 MAX_POINTS，带60 秒冷却 */
+function refill(){
+  const now = Date.now();
+  if(now - (led.lastRefill||0) < COOLDOWN_MS) return false;
+  led.points = MAX_POINTS;
+  led.lastRefill = now;
+  save();
+  return true;
+}
+function refillLeft(){
+  return Math.max(0, COOLDOWN_MS - (Date.now() - (led.lastRefill||0)));
+}
+
+/* ---------- 抽卡（与gacha.py 同算法：按稀有度加权 → 档内等概率） ---------- */
+function drawOne(budget){
+  let pool = CARDS;
+  if(budget != null && budget > 0){
+    pool = CARDS.filter(c => c.price <= budget);
+    if(!pool.length) return null;
+  }
+  const byR = {};
+  pool.forEach(c => (byR[c.rarity] = byR[c.rarity] || []).push(c));
+  const rs = Object.keys(byR), w = rs.map(r => META.weights[r] || 1);
+  // 加权随机
+  const tot = w.reduce((a,b)=>a+b,0);
+  let x = Math.random() * tot, pick = rs[0];
+  for(let i=0;i<rs.length;i++){ x -= w[i]; if(x <= 0){ pick = rs[i]; break; } }
+  const arr = byR[pick];
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/* ---------- 渲染 ---------- */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+
+/* 卡面：图片为主体（不遮挡），数据独立面板，健康度为右上角环形徽章 */
+function scoreBadge(c){
+  const pct = Math.max(0, Math.min(100, c.health_score));
+  const R = 21, C = 2 * Math.PI * R;          // 半径与周长
+  const dash = (pct / 100 * C).toFixed(2);
+  return `<div class="score" title="健康度 ${c.health_score.toFixed(1)} / 100">
+    <svg viewBox="0 0 50 50"><circle class="tr" cx="25" cy="25" r="${R}"/>
+      <circle class="pg" cx="25" cy="25" r="${R}" stroke-dasharray="${dash} ${C}"/></svg>
+    <div class="inner"><div class="num">${c.health_score.toFixed(0)}</div>
+      <div class="cap">健康度</div></div>
+  </div>`;
+}
+
+function cardHtml(c, isNew, isLast, inStage){
+  const emoji = EMO[c.category] || "🍽️";
+  const click = inStage ? "" : ` onclick='showCard(${JSON.stringify(c).replace(/'/g,"&#39;")})'`;
+  const art = c.image_url
+    ? `<img src="${esc(c.image_url)}" alt="${esc(c.name)}" loading="lazy" onerror="this.parentNode.innerHTML='<div class=&quot;ph&quot;>${emoji}</div>'">`
+    : `<div class="ph">${emoji}</div>`;
+
+  return `<div class="card t-${c.rarity}" style="background:linear-gradient(150deg,var(--c1),var(--c2) 46%,var(--c3));box-shadow:0 6px 22px var(--gl)"${click}>
+  <div class="card-in" style="background:linear-gradient(165deg,var(--c3),#140806 62%)">
+    <div class="rar-tag"><span>${c.rarity}</span></div>
+    ${scoreBadge(c)}
+    ${isNew ? '<div class="new">NEW</div>' : ""}
+    <div class="art">${art}</div>
+    <div class="cn">${esc(c.name)}${c.is_combo
+      ? `<span class="tier combo">套餐</span>`
+      : `<span class="tier">${esc(c.category)}</span>`}</div>
+    <div class="panel">
+      <div class="price-row"><span class="price">¥${c.price.toFixed(2)}</span><span class="price-unit">门店价</span></div>
+      <div class="nutri">
+        <div class="nu kcal"><div class="v">${c.calories.toFixed(0)}<span class="u">kcal</span></div><div class="k">热量</div></div>
+        <div class="nu protein"><div class="v">${c.protein.toFixed(0)}<span class="u">g</span></div><div class="k">蛋白质</div></div>
+        <div class="nu fat"><div class="v">${c.fat.toFixed(0)}<span class="u">g</span></div><div class="k">脂肪</div></div>
+        <div class="nu sodium"><div class="v">${c.sodium.toFixed(0)}<span class="u">mg</span></div><div class="k">钠</div></div>
+      </div>
+    </div>
+    ${(isLast && c.duplicate_count > 1) ? `<div class="dup">×${c.duplicate_count}</div>` : ""}
+  </div>
+</div>`;
+}
+
+function renderAll(){
+  $("ptNum").textContent = led.points;
+  renderRefillBtn();
+
+  const d = {SSR:0, UR:0, R:0};
+  let nCombo = 0;
+  led.collection.forEach(c => { d[c.rarity]++; if(c.is_combo) nCombo++; });
+  const n = led.collection.length || 1;
+  const avgK = n ? (led.collection.reduce((s,c)=>s+c.calories,0)/n).toFixed(0) : 0;
+  const avgH = n ? (led.collection.reduce((s,c)=>s+c.health_score,0)/n).toFixed(1) : 0;
+
+  // 底部细窄数据带
+  $("stats").innerHTML = [
+    ["", "已收集", led.collection.length, ""],
+    ["ssr", "SSR", d.SSR, ""],
+    ["ur", "UR", d.UR, ""],
+    ["r", "R", d.R, ""],
+    ["combo", "套餐", nCombo, ""],
+    ["", "均热量", avgK, "kcal"],
+    ["", "总抽卡", led.totalDraws, ""]
+  ].map(([cls,k,v,u]) =>
+    `<div class="stat${cls?" "+cls:""}"><span class="v">${v}${u?`<span style="font-size:9px;opacity:.7">${u}</span>`:""}</span><span class="k">${k}</span></div>`
+  ).join("");
+
+  // 收藏册（按稀有度 + 健康度排序）
+  const order = {SSR:0, UR:1, R:2};
+  const sorted = led.collection.slice().sort((a,b)=> order[a.rarity]-order[b.rarity] || b.health_score-a.health_score);
+  $("colInfo").textContent = `${led.collection.length} / ${CARDS.length}`;
+  // 本次抽到的卡在收藏册里带 NEW 徽标
+  $("colBox").innerHTML = sorted.length
+    ? sorted.map(c => cardHtml(c, drawnIds.has(c.id), c.duplicate_count > 1)).join("")
+    : `<div class="lock" style="grid-column:1/-1"><div class="e">📦</div>收藏册还是空的，点上方按钮抽第一张</div>`;
+
+  const canDraw = led.points >= 1;
+  $("btnDraw").disabled = !canDraw;
+  renderShelf();
+  $("hint").innerHTML = canDraw
+    ? `卡池 <b>${CARDS.length}</b> 张 · 单品 ${META.singleCount} · 套餐 ${META.comboCount} · SSR <b>5%</b> / UR <b>20%</b> / R <b>75%</b>`
+    : `<span class="warn">积分不足</span> · 点击右上角「刷新积分」立即补满至 ${MAX_POINTS} 分`;
+}
+
+/* ============ 抽卡演出 ============ */
+let busy = false;
+let allowSkip = false;   // 仅最后一张允许点击跳过
+let skipped = false;
+const drawnIds = new Set();   // 本次抽到的卡 id，用于收藏册 NEW 标记
+
+function burst(el, n){
+  for(let i=0;i<n;i++){
+    const b = document.createElement("div");
+    b.className = "ssr-burst";
+    const ang = (Math.PI*2*i)/n + Math.random()*.5;
+    const dist = 130 + Math.random()*170;
+    b.style.setProperty("--dx", Math.cos(ang)*dist + "px");
+    b.style.setProperty("--dy", Math.sin(ang)*dist + "px");
+    b.style.left = (44 + Math.random()*12) + "%";
+    b.style.top = (44 + Math.random()*12) + "%";
+    b.style.animation = `burst ${.75 + Math.random()*.55}s ease-out ${Math.random()*.14}s forwards`;
+    el.appendChild(b);
+    setTimeout(() => b.remove(), 1500);
+  }
+}
+
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/* 单张翻牌演出：卡背 -> 稀有度特效 -> 翻面 */
+async function revealCard(card){
+  const stage = $("stage"), flip = $("flip"), front = $("flipFront");
+  const isSSR = card.rarity === "SSR", isUR = card.rarity === "UR";
+  const isR = !isSSR && !isUR;
+
+  // SSR 排在多抽里最后揭幕，享受最完整的演出
+  if(isSSR) $("rays").classList.add("on");
+
+  stage.classList.add("on");
+  flip.classList.remove("go");
+  front.innerHTML = cardHtml(card, false, false, true);
+  front.classList.remove("ssr-show");
+  $("ssrVeil").classList.remove("on");
+  $("urVeil").classList.remove("on");
+  $("ssrWord").classList.remove("on");
+  $("stageHint").classList.remove("on");
+
+  // 前置：卡背从远处飞入并带旋转落位，营造"召唤"仪式感
+  flip.classList.remove("summon");
+  void flip.offsetWidth;              // 强制重排以重启动画
+  flip.classList.add("summon");
+
+  await sleep(isSSR ? 900 : 620);
+
+  // 开奖瞬间的光效
+  if(isSSR){ $("ssrVeil").classList.add("on"); burst(stage, 40); }
+  else if(isUR){ $("urVeil").classList.add("on"); burst(stage, 16); }
+  else { burst(stage, 5); }
+
+  flip.classList.add("go");
+
+  if(isSSR){
+    await sleep(400);
+    front.classList.add("ssr-show");
+    $("ssrWord").classList.add("on");
+    await sleep(520);
+    $("stageHint").classList.add("on");
+    await sleep(900);
+  }else{
+    await sleep(isUR ? 780 : 620);
+  }
+}
+
+/* 关闭演出 */
+function closeStage(){
+  const stage = $("stage");
+  stage.classList.remove("on");
+  $("rays").classList.remove("on");
+  $("ssrVeil").classList.remove("on");
+  $("urVeil").classList.remove("on");
+  $("ssrWord").classList.remove("on");
+  $("stageHint").classList.remove("on");
+  $("flip").classList.remove("go");
+  $("flip").classList.remove("summon");
+  $("flipFront").classList.remove("ssr-show");
+}
+
+async function doDraw(){
+  if(busy) return;
+  const n = Math.max(1, Math.min(20, parseInt($("inpDraw").value) || 1));
+  const bv = $("inpBudget").value.trim();
+  const budget = bv === "" ? null : parseFloat(bv);
+  if(led.points < n){
+    alert(`积分不足：抽 ${n} 次需要 ${n} 分，当前 ${led.points} 分。\n\n点击右上角「刷新积分」可立即补满至 ${MAX_POINTS} 分。`);
+    return;
+  }
+  const pool = (budget == null || budget <= 0) ? CARDS : CARDS.filter(c => c.price <= budget);
+  if(!pool.length){ alert(`预算 ${budget} 元内没有可抽取的餐品。`); return; }
+
+  // 先算好结果并落库（避免演出中断导致数据丢失）
+  const drawn = [];
+  const known = new Set(led.collection.map(c => c.id));
+  for(let i=0;i<n;i++){
+    const c = drawOne(budget);
+    if(!c) continue;
+    const ex = led.collection.find(x => x.id === c.id);
+    if(ex){ ex.duplicate_count = (ex.duplicate_count || 1) + 1; c.duplicate_count = ex.duplicate_count; }
+    else{
+      c.duplicate_count = 1;
+      c.obtained_at = new Date().toLocaleString("zh-CN");
+      led.collection.push(JSON.parse(JSON.stringify(c)));
+    }
+    known.add(c.id);
+    drawnIds.add(c.id);
+    drawn.push(c);
+  }
+  led.points -= n * META.costPerDraw;
+  led.totalDraws += n;
+  save();
+
+  busy = true;
+  $("btnDraw").disabled = true;
+  renderAll();
+
+  // 演出排序：SSR 最后翻（压轴），UR 次之
+  const order = {R:0, UR:1, SSR:2};
+  const seq = drawn.slice().sort((a,b) => order[a.rarity] - order[b.rarity]);
+  for(let i=0;i<seq.length;i++){
+    // 非最后一张时禁用跳过，保证多抽的逐张节奏
+    allowSkip = (i === seq.length - 1);
+    await revealCard(seq[i]);
+    if(skipped){ skipped = false; break; }   // 跳过则直接进入结算
+  }
+  closeStage();
+  allowSkip = false;
+
+  busy = false;
+  renderAll();          // 此时 drawnIds 仍有效，收藏册显示 NEW
+  // 新获得的卡在收藏册顶部，滚动到该处
+  $("colBox").scrollIntoView({behavior:"smooth", block:"start"});
+  setTimeout(() => { drawnIds.clear(); }, 4000);   // 4 秒后撤掉 NEW 标记
+}
+
+function showCard(c){
+  const t = RAR[c.rarity] || RAR.R;
+  $("mTitle").innerHTML = `<span class="rr" style="background:linear-gradient(120deg,${t.c1},${t.c2},${t.c3})"><span>${c.rarity}</span></span> ${esc(c.name)}`;
+  const img = c.image_url
+    ? `<img class="mimg" src="${esc(c.image_url)}" alt="${esc(c.name)}"
+         onerror="this.style.display='none'">` : "";
+  $("mBody").innerHTML = img + `
+    <div class="mrow"><span>价格</span><b style="color:var(--mcd-gold)">¥${c.price.toFixed(2)}</b></div>
+    <div class="mrow"><span>热量</span><b>${c.calories.toFixed(0)} kcal</b></div>
+    <div class="mrow"><span>蛋白质 / 脂肪 / 碳水</span><b>${c.protein.toFixed(0)} / ${c.fat.toFixed(0)} / ${c.carbohydrate.toFixed(0)} g</b></div>
+    <div class="mrow"><span>钠</span><b>${c.sodium.toFixed(0)} mg</b></div>
+    <div class="mrow"><span>健康度评分</span><b style="color:var(--c2,#FFC72C)">${c.health_score.toFixed(1)}<span style="font-size:11px;opacity:.7"> / 100</span></b></div>
+    <div class="mrow"><span>品类 / 价格档</span><b>${esc(c.category)} · ${esc(c.price_tier)} 档</b></div>
+    ${c.is_combo && (c.combo_items||[]).length ? `<div class="mrow"><span>默认搭配</span><b style="font-size:12px">${esc(c.combo_items.join(" + "))}</b></div>` : ""}
+    <div class="mrow"><span>餐品编码</span><b>${esc(c.product_code || c.id)}</b></div>
+    <div class="mnote">卡面数据来自麦当劳 MCP 实采（${esc(META.sampledAt)}）。<br>
+    ${c.is_combo ? "套餐营养为<b>默认搭配</b>的基准值，实际可替换小食与饮料，热量会随之变化；套餐评分按「每元营养密度」计算，与单品评分口径不同。<br>" : ""}
+    健康度评分仅供趣味参考，不构成营养建议。<br>
+    下单价格以<b>你所在门店实时核价</b>为准，需先选择门店。</div>
+    <div class="mnote" style="background:rgba(218,41,28,.06);border-left:3px solid #DA291C;padding:8px 10px;border-radius:6px;margin-top:8px;font-size:12px">
+      💡 <b>网页可预览卡面</b>，但<b>真下单</b>需在对话里说：<code>买 ${esc(c.name)}</code><br>
+      我会通过 WorkBuddy 的麦当劳 connector 真实下单并返回订单号。
+    </div>`;
+  $("mYes").onclick = () => {
+    closeM();
+    buyCard(c);
+  };
+  $("modal").classList.add("on");
+}
+function closeM(){ $("modal").classList.remove("on"); }
+
+/* ---------- 事件 ---------- */
+/* Hero 图鉴：展示已收集卡，未收集显示锁定剪影；无收藏时展示卡池精选 */
+let shelfTimer = 0;
+function renderShelf(){
+  const box = $("heroShelf");
+  if(!box) return;
+  const owned = new Set(led.collection.map(c => c.id));
+
+  // 已收集优先（按稀有度与分数排序），否则用卡池前三作展示位
+  let pool = led.collection.length
+    ? led.collection.slice().sort((a,b)=>{
+        const o = {SSR:0,UR:1,R:2};
+        return o[a.rarity]-o[b.rarity] || b.health_score-a.health_score;
+      })
+    : CARDS.slice().sort((a,b)=>{
+        const o = {SSR:0,UR:1,R:2};
+        return o[a.rarity]-o[b.rarity] || b.health_score-a.health_score;
+      }).slice(0,3);
+
+  // 取 3 张作为 左/中/右 展示位；若已收集不足，用未收集的补位（显剪影）
+  const locked = CARDS.filter(c => !owned.has(c.id))
+                      .sort((a,b)=>{
+                        const o = {SSR:0,UR:1,R:2};
+                        return o[b.rarity]-o[a.rarity];      // 越稀有越靠前
+                      });
+  const picks = [];
+  for(let i=0;i<3;i++){
+    picks.push(pool[i] || locked[i] || null);
+  }
+
+  box.innerHTML = picks.map((c,i) => {
+    if(!c) return `<div class="hs-card locked"><div class="hs-name">?</div></div>`;
+    const got = owned.has(c.id);
+    const rar = (RAR[c.rarity]||RAR.R);
+    return `<div class="hs-card${got?"":" locked"}">
+      <img src="${esc(c.image_url||"")}" alt="" loading="lazy"
+        onerror="this.style.display='none'">
+      <span class="hs-rar" style="background:linear-gradient(120deg,${rar.c1},${rar.c2})">${c.rarity}</span>
+      <div class="hs-name">${esc(c.name.length>7 ? c.name.slice(0,6)+"…" : c.name)}</div>
+    </div>`;
+  }).join("");
+
+  // 自动轮播：每3.6 秒换一组
+  if(shelfTimer) clearInterval(shelfTimer);
+  if(led.collection.length >= 3){
+    let k = 0;
+    shelfTimer = setInterval(() => {
+      const owned = led.collection.slice().sort((a,b)=>{
+        const o = {SSR:0,UR:1,R:2};
+        return o[a.rarity]-o[b.rarity] || b.health_score-a.health_score;
+      });
+      if(owned.length < 3) return;
+      k = (k + 1) % owned.length;
+      const trio = [owned[(k-1+owned.length)%owned.length], owned[k], owned[(k+1)%owned.length]];
+      box.innerHTML = trio.map(c => {
+        const rar = (RAR[c.rarity]||RAR.R);
+        return `<div class="hs-card">
+          <img src="${esc(c.image_url||"")}" alt="" loading="lazy" onerror="this.style.display='none'">
+          <span class="hs-rar" style="background:linear-gradient(120deg,${rar.c1},${rar.c2})">${c.rarity}</span>
+          <div class="hs-name">${esc(c.name.length>7 ? c.name.slice(0,6)+"…" : c.name)}</div>
+        </div>`;
+      }).join("");
+    }, 3600);
+  }
+}
+
+/* 刷新积分按钮状态：满额置灰、冷却中显示秒数 */
+function renderRefillBtn(){
+  const b = $("btnRefill");
+  if(!b) return;
+  const left = refillLeft();
+  const full = led.points >= MAX_POINTS;
+  b.classList.toggle("full", full && left <= 0);
+  b.classList.toggle("cool", left > 0 && !full);
+  if(left > 0 && !full){
+    b.querySelector("span").textContent = Math.ceil(left/1000) + " 秒后刷新";
+    b.title = `冷却中，${Math.ceil(left/1000)} 秒后可再次刷新`;
+  }else if(full){
+    b.querySelector("span").textContent = "积分已满";
+    b.title = `当前已是满额 ${MAX_POINTS} 分`;
+  }else{
+    b.querySelector("span").textContent = "刷新积分";
+    b.title = `补满至 ${MAX_POINTS} 分（60 秒冷却）`;
+  }
+}
+
+$("btnRefill").onclick = () => {
+  if(refill()){
+    renderAll();
+    // 补满时给一次视觉反馈
+    const n = $("ptNum");
+    n.animate([{transform:"scale(1)"},{transform:"scale(1.28)",color:"#FFF3C4"},
+               {transform:"scale(1)"}], {duration:520, easing:"cubic-bezier(.34,1.5,.64,1)"});
+  }
+};
+
+$("btnDraw").onclick = doDraw;
+// 演出中：最后一张可点击跳过，其余阶段点击无效（保持逐张节奏）
+$("stage").onclick = () => { if(busy && allowSkip){ skipped = true; closeStage(); } };
+$("inpDraw").addEventListener("input", e => {
+  [...$("chipsDraw").children].forEach(c => c.classList.toggle("on", c.dataset.v === e.target.value));
+});
+$("chipsDraw").onclick = e => {
+  const b = e.target.closest(".seg");
+  if(!b) return;
+  $("inpDraw").value = b.dataset.v;
+  [...$("chipsDraw").children].forEach(c => c.classList.toggle("on", c === b));
+};
+$("chipsBudget").onclick = e => {
+  const b = e.target.closest(".seg");
+  if(!b) return;
+  $("inpBudget").value = b.dataset.v;
+  [...$("chipsBudget").children].forEach(c => c.classList.toggle("on", c === b));
+};
+$("inpBudget").addEventListener("input", () => {
+  [...$("chipsBudget").children].forEach(c => c.classList.toggle("on", c.dataset.v === $("inpBudget").value));
+});
+
+/* ---------- 初始化 ---------- */
+$("storeTag").textContent = "📍 点击选择你附近的麦当劳";
+
+/* ================= 真实门店 + 真实下单 ================= */
+const SEL_KEY = "mcd.selectedStore";
+let STORE = loadStore();          // 当前选中门店
+let BE_TYPE = 1;                  // 1=到店自取 5=得来速
+let IP_LOC = null;                // IP 定位结果 {city, regionName, ...}
+
+function loadStore(){
+  try { return JSON.parse(localStorage.getItem(SEL_KEY) || "null"); }
+  catch(_){ return null; }
+}
+function saveStore(s){
+  try { localStorage.setItem(SEL_KEY, JSON.stringify(s)); } catch(_){}
+  STORE = s; paintStoreTag();
+}
+function paintStoreTag(){
+  const t = $("storeTag");
+  if(!t) return;
+  if(STORE){
+    t.textContent = `📍 ${STORE.name} · ${STORE.distanceText || ""}`;
+    t.classList.add("sel");
+    t.title = STORE.address || "";
+  }else{
+    t.textContent = "📍 点击选择你附近的麦当劳";
+    t.classList.remove("sel");
+  }
+}
+
+/* ---------- IP 自动定位 + 自动选最近门店 ---------- */
+async function ipAutoLocate(){
+  if(STORE) return;  // 已有选择，不打扰
+  const tag = $("storeTag");
+  if(tag) tag.textContent = "📍 正在定位你的位置…";
+  try{
+    const r = await fetch("/api/ip-locate");
+    const j = await r.json();
+    if(!j.success || !j.location) return;
+    IP_LOC = j.location;
+    const city = j.location.city || "";
+    if(!city) return;
+    // 用城市名做关键词，覆盖大多数出行场景
+    const j2 = await api("/api/stores", {city, keyword: city, beType: 1});
+    if(j2.stores && j2.stores.length){
+      const s = j2.stores[0];
+      // 给 store 注入 city，方便用户后续手动改
+      saveStore({...s, city: j2.city || city});
+      if(tag) tag.textContent = `📍 ${s.name} · ${s.distanceText || ""}`;
+    }else if(tag){
+      tag.textContent = `📍 ${city} · 未找到附近门店，点击选择`;
+    }
+  }catch(_){
+    if(tag) tag.textContent = "📍 点击选择你附近的麦当劳";
+  }
+}
+// 页面加载 800ms 后自动定位（不抢首屏渲染）
+setTimeout(ipAutoLocate, 800);
+
+function openMask(id){ $(id).classList.add("on"); }
+function closeMask(id){ $(id).classList.remove("on"); }
+function esc2(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function showErr(boxId, msg){
+  const b = $(boxId);
+  if(!b) return;
+  b.innerHTML = msg ? `<div class="err">${esc2(msg)}</div>` : "";
+}
+async function api(path, payload){
+  const r = await fetch(path, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(payload || {})
+  });
+  let j;
+  try { j = await r.json(); }
+  catch(_){ throw new Error("服务返回异常（HTTP " + r.status + "）"); }
+  if(!j.success) throw new Error(j.error || ("请求失败 HTTP " + r.status));
+  return j;
+}
+
+/* ---------- 门店选择 ---------- */
+$("storeTag").addEventListener("click", () => {
+  paintStoreTag();
+  showErr("storeErr", "");
+  openMask("maskStore");
+  if(STORE){ $("inCity").value = STORE.city || ""; }
+});
+$("btnStoreClose").addEventListener("click", () => closeMask("maskStore"));
+$("maskStore").addEventListener("click", e => {
+  if(e.target === $("maskStore")) closeMask("maskStore");
+});
+
+[...$("segBe").children].forEach(s => s.addEventListener("click", () => {
+  [...$("segBe").children].forEach(x => x.classList.remove("on"));
+  s.classList.add("on");
+  BE_TYPE = parseInt(s.dataset.v, 10) || 1;
+}));
+
+$("btnSearch").addEventListener("click", async () => {
+  const city = $("inCity").value.trim();
+  const kw = $("inKw").value.trim();
+  if(!city || !kw){ showErr("storeErr", "请填写城市和地点关键词"); return; }
+  const btn = $("btnSearch");
+  btn.disabled = true; btn.textContent = "查询中…";
+  showErr("storeErr", ""); $("storeList").innerHTML = "";
+  try{
+    const j = await api("/api/stores", {city, keyword: kw, beType: BE_TYPE});
+    $("storeList").innerHTML = j.stores.map((s,i) => `
+      <button class="sitem${STORE && STORE.storeCode===s.storeCode ? " on":""}"
+              data-i="${i}">
+        <div class="nm">${esc2(s.name)}</div>
+        <div class="mt">
+          <span class="dist">${esc2(s.distanceText)}</span>
+          <span>${esc2(s.address || "")}</span>
+          ${s.open ? `<span>营业 ${esc2(s.open)}</span>` : ""}
+        </div>
+      </button>`).join("");
+    [...$("storeList").children].forEach(btn2 => {
+      btn2.addEventListener("click", () => {
+        const s = j.stores[parseInt(btn2.dataset.i, 10)];
+        saveStore({...s, city, keyword: kw, beType: BE_TYPE});
+        [...$("storeList").children].forEach(x => x.classList.remove("on"));
+        btn2.classList.add("on");
+        setTimeout(() => closeMask("maskStore"), 220);
+      });
+    });
+  }catch(e){
+    showErr("storeErr", e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = "查找附近门店";
+  }
+});
+$("inKw").addEventListener("keydown", e => {
+  if(e.key === "Enter") $("btnSearch").click();
+});
+
+/* ---------- 卡面「立即购买」：真实核价 + 二次确认 ---------- */
+function buyCard(c){
+  if(!STORE){
+    alert("请先点击页面顶部「选择你附近的麦当劳」，查询并选中门店后再下单。\n\n（这样价格才是你所在门店的真实售价）");
+    openMask("maskStore");
+    return;
+  }
+  const body = $("orderBody");
+  body.innerHTML = `<h3>正在核价…</h3><div class="sub">${esc2(STORE.name)}</div>`;
+  openMask("maskOrder");
+  api("/api/order", {
+    step: "quote",
+    beType: STORE.beType || BE_TYPE,
+    store: STORE,
+    items: [{productCode: c.product_code || c.id, quantity: 1}]
+  }).then(j => {
+    const p = j.price || {};
+    const total = (p.price != null ? p.price : p.totalPrice);
+    body.innerHTML = `
+      <h3>确认订单</h3>
+      <div class="sub">${esc2(STORE.name)} · ${esc2(STORE.distanceText || "")}</div>
+      <div class="sum">
+        <div class="ln"><span>餐品</span><span>${esc2(c.name)}</span></div>
+        <div class="ln"><span>数量</span><span>1</span></div>
+        ${p.discount ? `<div class="ln"><span>优惠</span><span>-¥${esc2(p.discount)}</span></div>` : ""}
+        ${p.deliveryPrice ? `<div class="ln"><span>配送费</span><span>¥${esc2(p.deliveryPrice)}</span></div>` : ""}
+        <div class="ln tot"><span>应付</span><span>¥${esc2(total != null ? total : c.price)}</span></div>
+      </div>
+      <div class="hint">
+        这是<b>真实订单</b>，确认后将通过麦当劳官方通道下单并生成支付链接。<br>
+        请核对餐品与门店后再继续。
+      </div>
+      <button class="sbtn" id="btnDoOrder">确认下单</button>
+      <button class="sbtn ghost" id="btnCancelOrder">再想想</button>`;
+    $("btnDoOrder").addEventListener("click", () => {
+      const b = $("btnDoOrder");
+      b.disabled = true; b.textContent = "提交订单中…";
+      api("/api/order", {step:"confirm", quoteToken: j.quoteToken})
+        .then(r => {
+          const o = r.order || {};
+          body.innerHTML = `
+            <div class="ok">
+              <div class="tick">🎉</div>
+              <h3>下单成功</h3>
+              <div class="oid">订单号：${esc2(o.orderId || "—")}</div>
+              ${o.payUrl ? `<a class="paylink" href="${esc2(o.payUrl)}" target="_blank" rel="noopener">前往支付 ¥${esc2(total != null ? total : c.price)}</a>` : ""}
+              <div class="hint">请在订单有效期内完成支付，超时订单可能自动取消。</div>
+            </div>
+            <button class="sbtn ghost" id="btnDone">完成</button>`;
+          $("btnDone").addEventListener("click", () => closeMask("maskOrder"));
+        })
+        .catch(e => {
+          b.disabled = false; b.textContent = "确认下单";
+          body.insertAdjacentHTML("afterbegin", `<div class="err">${esc2(e.message)}</div>`);
+        });
+    });
+    $("btnCancelOrder").addEventListener("click", () => closeMask("maskOrder"));
+  }).catch(e => {
+    body.innerHTML = `<h3>核价失败</h3><div class="err">${esc2(e.message)}</div>
+      <button class="sbtn ghost" id="btnBack">返回</button>`;
+    $("btnBack").addEventListener("click", () => closeMask("maskOrder"));
+  });
+}
+
+paintStoreTag();
+renderAll();
+setInterval(renderAll, 1000);
+
+/* 调试开关：?demo=1 自动抽卡一次（用于 headless 截图与回归测试） */
+if(location.search.includes("demo=1")){
+  setTimeout(() => { $("btnDraw").click(); }, 600);
+}
+
+/* Hero 视差：背景随鼠标轻微位移 + 金色粒子漂浮 */
+(function heroFx(){
+  const hero = document.querySelector(".hero");
+  const bg = $("heroBg");
+  const box = $("heroCards");
+  if(!hero || !bg) return;
+
+  // 金色粒子（纯 CSS 动画，数量控制在 14 个以内）
+  let ps = "";
+  for(let i=0;i<14;i++){
+    const x = 52 + Math.random()*46;      // 集中在右侧卡牌区
+    const y = Math.random()*100;
+    const d = 4 + Math.random()*7;
+    const dur = 5 + Math.random()*6;
+    const del = (Math.random()*6).toFixed(2);
+    ps += `<i style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;width:${d}px;height:${d}px;
+      animation-duration:${dur.toFixed(1)}s;animation-delay:-${del}s"></i>`;
+  }
+  box.innerHTML = ps;
+
+  if(matchMedia("(prefers-reduced-motion:reduce)").matches) return;
+  if(matchMedia("(hover:none)").matches) return;      // 触屏不做视差
+
+  let raf = 0;
+  hero.addEventListener("mousemove", e => {
+    if(raf) return;
+    raf = requestAnimationFrame(() => {
+      const r = hero.getBoundingClientRect();
+      const dx = (e.clientX - r.left) / r.width - 0.5;
+      const dy = (e.clientY - r.top) / r.height - 0.5;
+      bg.style.transform = `scale(1.04) translate(${(-dx*14).toFixed(1)}px, ${(-dy*10).toFixed(1)}px)`;
+      bg.style.transition = "transform .25s ease-out";
+      raf = 0;
+    });
+  });
+  hero.addEventListener("mouseleave", () => {
+    bg.style.transform = "scale(1)";
+    bg.style.transition = "transform .6s ease";
+  });
+})();
+$("footer").innerHTML = `麦卡收藏家 · mcd-gacha-collector · 麦当劳程序员创意开发大赛参赛作品<br>
+数据来自麦当劳 MCP Server（open.mcd.cn），餐品价格与供应以官方渠道实时结果为准。<br>
+本页面为参赛作品，非麦当劳官方产品；健康度评分仅供趣味参考，不构成医疗或营养建议。<br>
+积分与收藏保存在浏览器本地，不消耗任何麦当劳官方积分。<br>
+<a href="https://github.com/M-China/mcd-developer-innovation-challenge" target="_blank" rel="noopener">麦当劳程序员创意开发大赛</a>`;
+</script>
+</body>
+</html>
