@@ -17,7 +17,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "skills", "mcd-gacha-collector", "scripts"))
 from gacha import (build_cards, compute_thresholds, pool_thresholds, RARITIES,  # noqa: E402
-                  compute_rarity_thresholds, rarity_value)
+                  compute_rarity_thresholds, rarity_value, expand_flash_variants)
 from image_map import IMAGE_MAP  # noqa: E402
 from combo_data import build_combo_rows  # noqa: E402
 
@@ -63,8 +63,9 @@ rows = [{"productName": n, "energyKcal": v[0], "protein": v[1], "fat": v[2],
 
 combos = build_combo_rows()
 cards = build_cards(rows, PRICES, combos)
+# 闪卡是独立卡项：一部分 SSR/UR 会额外产出一张闪卡版
+cards = expand_flash_variants(cards)
 th = pool_thresholds(rows, combos)
-rarity_th = compute_rarity_thresholds(cards)
 
 # 注入 MCP 真实卡面图片与餐品编码
 combo_by_name = {r["name"]: r for r in combos}
@@ -98,7 +99,7 @@ payload = {
         "rarityRule": "综合收藏价值分 = 价格 50% + 热量载荷 30% + 蛋白含量 20%；"
                       "按预算层（≤15 / 15~30 / 30~50 / >50 元）分层抽样，层内前 25% → SSR",
         "rarityNote": "稀有度表示收集难度（贵重、正餐份量的更难抽到），与健康度评分相互独立",
-        "rarityThresholds": {k: round(v, 3) for k, v in rarity_th.items()},
+        "rarityBands": "按价格分层（≤15 / 15~30 / 30~50 / >50元），层内价值分前 25% 为 SSR",
         "rarityWeights": {"price": 0.50, "calorie": 0.30, "protein": 0.20},
         "weights": {"SSR": 5, "UR": 20, "R": 75},
         "recoverHours": 4,
