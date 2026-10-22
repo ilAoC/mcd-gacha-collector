@@ -337,86 +337,152 @@ body{
 
 /* ================= 卡面特效 =================
    三种：flash 闪卡 / silver 银碎 / gold 金卡
-   全部用遮罩层实现，不改动卡片结构 */
-.foil{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden}
+   **覆盖整张卡面**（不是只盖图片区），**不加任何描边**，
+   全部用粒子 + 光效实现，保持通透不遮挡内容 */
+.foil{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;
+ border-radius:14px}
 
-/* --- 闪卡：斜向彩虹流光 --- */
+/* --- 闪卡：整卡斜向彩虹流光（3 道光带同时扫过）--- */
 .foil-flash::before{
- content:"";position:absolute;inset:-60% -20%;
- background:linear-gradient(115deg,
-   transparent 0%,transparent 34%,
-   rgba(255,255,255,.16) 42%,rgba(160,230,255,.30) 47%,
-   rgba(255,190,240,.26) 51%,rgba(255,255,255,.18) 56%,
-   transparent 66%,transparent 100%);
- animation:foilSweep 3.4s cubic-bezier(.5,0,.3,1) infinite;
+ content:"";position:absolute;inset:-70% -30%;
+ background:linear-gradient(112deg,
+   transparent 0%,transparent 22%,
+   rgba(255,255,255,.14) 30%,rgba(120,220,255,.42) 36%,
+   rgba(255,255,255,.58) 40%,rgba(200,150,255,.40) 45%,
+   rgba(255,255,255,.50) 49%,rgba(255,210,130,.36) 54%,
+   transparent 64%,transparent 100%);
+ animation:foilSweep 2.4s cubic-bezier(.45,0,.35,1) infinite;
  mix-blend-mode:screen}
 @keyframes foilSweep{
- 0%{transform:translateX(-62%) rotate(0deg);opacity:0}
- 14%{opacity:1}
- 78%{opacity:1}
- 100%{transform:translateX(62%) rotate(0deg);opacity:0}}
-/* 边框彩虹描边 */
+ 0%{transform:translateX(-75%) skewX(-8deg);opacity:0}
+ 10%{opacity:1}
+ 82%{opacity:1}
+ 100%{transform:translateX(75%) skewX(-8deg);opacity:0}}
+/* 第二道反向细光带，制造交错感 */
 .foil-flash::after{
- content:"";position:absolute;inset:0;border-radius:inherit;
- background:linear-gradient(115deg,
-   rgba(255,120,200,.5),rgba(120,220,255,.5),rgba(255,230,120,.5),rgba(255,120,200,.5));
- background-size:280% 100%;
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude;
- padding:1.5px;opacity:.55;
- animation:foilBorder 3.4s linear infinite}
-@keyframes foilBorder{0%{background-position:0% 0}100%{background-position:280% 0}}
+ content:"";position:absolute;inset:-70% -30%;
+ background:linear-gradient(112deg,
+   transparent 0%,transparent 34%,
+   rgba(255,255,255,.36) 42%,rgba(255,255,255,.50) 46%,
+   rgba(160,240,255,.32) 50%,transparent 58%,transparent 100%);
+ animation:foilSweep2 2.4s cubic-bezier(.45,0,.35,1) infinite;
+ mix-blend-mode:screen}
+@keyframes foilSweep2{
+ 0%{transform:translateX(-85%) skewX(-8deg);opacity:0}
+ 30%{opacity:1}
+ 88%{opacity:1}
+ 100%{transform:translateX(85%) skewX(-8deg);opacity:0}}
+/* 闪卡：整卡彩虹氛围光（不用描边） */
+.foil-halo.flash-glow{background:
+  radial-gradient(ellipse 130% 55% at 50% 0%,rgba(160,220,255,.18),transparent 64%),
+  radial-gradient(ellipse 110% 50% at 50% 100%,rgba(255,170,230,.14),transparent 60%),
+  radial-gradient(circle at 50% 45%,rgba(200,190,255,.12),transparent 54%);
+ mix-blend-mode:screen;animation:foilBreath 3s ease-in-out infinite}
 
-/* --- 银碎：细碎银箔颗粒 --- */
+/* --- 银碎：整卡银色箔片粒子（12 颗，大小不一，缓慢漂浮）--- */
 .foil-silver::before{
  content:"";position:absolute;inset:0;
  background-image:
-  radial-gradient(circle at 18% 24%,rgba(255,255,255,.72) 0 1px,transparent 1.6px),
-  radial-gradient(circle at 72% 18%,rgba(226,240,255,.62) 0 1.2px,transparent 1.8px),
-  radial-gradient(circle at 42% 62%,rgba(255,255,255,.58) 0 1px,transparent 1.6px),
-  radial-gradient(circle at 86% 71%,rgba(214,232,255,.66) 0 1.3px,transparent 1.9px),
-  radial-gradient(circle at 28% 82%,rgba(255,255,255,.54) 0 1px,transparent 1.6px),
-  radial-gradient(circle at 61% 38%,rgba(236,246,255,.60) 0 1.1px,transparent 1.7px);
- mix-blend-mode:screen;animation:foilShimmer 4.2s ease-in-out infinite}
-@keyframes foilShimmer{0%,100%{opacity:.42}50%{opacity:.85}}
-/* 冷银描边 */
+  radial-gradient(circle at 14% 18%,rgba(255,255,255,.92) 0 1.6px,transparent 2.4px),
+  radial-gradient(circle at 42% 12%,rgba(214,238,255,.80) 0 1.2px,transparent 2px),
+  radial-gradient(circle at 72% 22%,rgba(255,255,255,.86) 0 1.8px,transparent 2.6px),
+  radial-gradient(circle at 90% 14%,rgba(196,224,250,.74) 0 1.3px,transparent 2.1px),
+  radial-gradient(circle at 26% 38%,rgba(255,255,255,.78) 0 1.4px,transparent 2.2px),
+  radial-gradient(circle at 58% 44%,rgba(226,244,255,.88) 0 1.7px,transparent 2.5px),
+  radial-gradient(circle at 84% 40%,rgba(255,255,255,.70) 0 1.2px,transparent 2px),
+  radial-gradient(circle at 10% 62%,rgba(206,230,255,.82) 0 1.5px,transparent 2.3px),
+  radial-gradient(circle at 38% 70%,rgba(255,255,255,.90) 0 1.8px,transparent 2.6px),
+  radial-gradient(circle at 66% 62%,rgba(220,240,255,.76) 0 1.3px,transparent 2.1px),
+  radial-gradient(circle at 88% 74%,rgba(255,255,255,.84) 0 1.6px,transparent 2.4px),
+  radial-gradient(circle at 22% 86%,rgba(230,246,255,.80) 0 1.4px,transparent 2.2px),
+  radial-gradient(circle at 52% 92%,rgba(255,255,255,.76) 0 1.5px,transparent 2.3px),
+  radial-gradient(circle at 78% 90%,rgba(210,234,255,.72) 0 1.2px,transparent 2px);
+ background-size:190px 210px,230px 190px,170px 240px,210px 200px,
+                250px 220px,180px 260px,220px 180px,200px 240px;
+ mix-blend-mode:screen;
+ animation:foilFloat 7s ease-in-out infinite}
+@keyframes foilFloat{
+ 0%{background-position:0 0,20px 10px,40px 0,10px 20px,
+              30px 5px,0 25px,15px 35px,35px 15px,
+              5px 40px,25px 30px,45px 20px,20px 45px,
+              40px 35px,10px 50px; opacity:.52}
+ 50%{opacity:.92}
+ 100%{background-position:18px -14px,-14px 12px,-22px -8px,12px -20px,
+              -20px -10px,16px -22px,-12px 8px,20px -16px,
+              -8px -24px,14px -20px,-18px -6px,10px -26px,
+              -16px -20px,8px -30px; opacity:.52}}
+/* 银碎：整卡冷银氛围光（不用描边） */
 .foil-silver::after{
- content:"";position:absolute;inset:0;border-radius:inherit;
- background:linear-gradient(150deg,rgba(226,240,255,.75),rgba(150,175,200,.30),rgba(240,248,255,.65));
- background-size:200% 100%;
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude;
- padding:1.5px;opacity:.68;
- animation:foilBorder 5s linear infinite}
+ content:"";position:absolute;inset:0;
+ background:
+  radial-gradient(ellipse 120% 60% at 50% 0%,rgba(200,230,255,.20),transparent 62%),
+  radial-gradient(ellipse 100% 50% at 50% 100%,rgba(150,190,225,.16),transparent 58%);
+ mix-blend-mode:screen;animation:foilBreath 4.5s ease-in-out infinite}
+@keyframes foilBreath{0%,100%{opacity:.55}50%{opacity:1}}
 
-/* --- 金卡：鎏金描边 + 金粉浮尘 --- */
+/* --- 金卡：整卡金粉粒子（14 颗）+ 鎏金光晕（不用描边）--- */
 .foil-gold::before{
  content:"";position:absolute;inset:0;
  background-image:
-  radial-gradient(circle at 22% 30%,rgba(255,214,120,.85) 0 1.4px,transparent 2px),
-  radial-gradient(circle at 78% 24%,rgba(255,196,80,.78) 0 1.2px,transparent 1.9px),
-  radial-gradient(circle at 46% 68%,rgba(255,226,150,.72) 0 1.3px,transparent 2px),
-  radial-gradient(circle at 88% 76%,rgba(255,188,64,.70) 0 1.1px,transparent 1.8px),
-  radial-gradient(circle at 33% 86%,rgba(255,208,104,.66) 0 1.2px,transparent 1.9px);
- mix-blend-mode:screen;animation:foilShimmer 3.6s ease-in-out infinite}
-@keyframes foilShimmer{0%,100%{opacity:.55}50%{opacity:1}}
-/* 鎏金描边 */
+  radial-gradient(circle at 16% 14%,rgba(255,240,186,1) 0 4.2px,transparent 5.8px),
+  radial-gradient(circle at 46% 8%,rgba(255,206,72,.96) 0 3.2px,transparent 4.6px),
+  radial-gradient(circle at 76% 17%,rgba(255,248,200,1) 0 4.6px,transparent 6.2px),
+  radial-gradient(circle at 93% 9%,rgba(255,192,44,.94) 0 3px,transparent 4.4px),
+  radial-gradient(circle at 28% 31%,rgba(255,224,124,.97) 0 3.7px,transparent 5.1px),
+  radial-gradient(circle at 62% 37%,rgba(255,252,220,1) 0 4.4px,transparent 6px),
+  radial-gradient(circle at 87% 33%,rgba(255,208,64,.94) 0 3.2px,transparent 4.6px),
+  radial-gradient(circle at 7% 55%,rgba(255,240,170,.97) 0 3.9px,transparent 5.3px),
+  radial-gradient(circle at 40% 61%,rgba(255,198,40,.96) 0 3.4px,transparent 5px),
+  radial-gradient(circle at 70% 57%,rgba(255,250,204,1) 0 4.1px,transparent 5.6px),
+  radial-gradient(circle at 91% 65%,rgba(255,214,74,.94) 0 3.2px,transparent 4.6px),
+  radial-gradient(circle at 19% 81%,rgba(255,232,150,.97) 0 3.7px,transparent 5.1px),
+  radial-gradient(circle at 54% 87%,rgba(255,253,218,1) 0 4.3px,transparent 5.9px),
+  radial-gradient(circle at 83% 85%,rgba(255,198,42,.94) 0 3px,transparent 4.4px),
+  radial-gradient(circle at 34% 46%,rgba(255,244,184,.85) 0 2.6px,transparent 4px),
+  radial-gradient(circle at 79% 50%,rgba(255,210,80,.82) 0 2.4px,transparent 3.8px);
+ background-size:165px 195px,200px 168px,145px 210px,185px 176px,
+                215px 200px,160px 226px,145px 185px,200px 164px,170px 200px;
+ mix-blend-mode:screen;
+ animation:foilFloat 4.6s ease-in-out infinite}
+/* 金卡：整卡鎏金氛围光（顶部+底部+侧向光晕，不用描边） */
 .foil-gold::after{
- content:"";position:absolute;inset:0;border-radius:inherit;
- background:linear-gradient(140deg,#FFE9A8,#FFB01F 26%,#FFF3C4 48%,#D9860B 72%,#FFD979);
- background-size:220% 100%;
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude;
- padding:2px;opacity:.92;
- animation:foilBorder 4s linear infinite;
- filter:drop-shadow(0 0 5px rgba(255,199,44,.62))}
-/* 金卡四角光标 */
-.foil-gold .foil-corner{position:absolute;width:16px;height:16px;
- border:1.5px solid rgba(255,214,120,.9);z-index:3}
-.foil-gold .foil-corner.tl{top:5px;left:5px;border-right:0;border-bottom:0;border-radius:5px 0 0 0}
-.foil-gold .foil-corner.tr{top:5px;right:5px;border-left:0;border-bottom:0;border-radius:0 5px 0 0}
-.foil-gold .foil-corner.bl{bottom:5px;left:5px;border-right:0;border-top:0;border-radius:0 0 0 5px}
-.foil-gold .foil-corner.br{bottom:5px;right:5px;border-left:0;border-top:0;border-radius:0 0 5px 0}
+ content:"";position:absolute;inset:0;
+ background:
+  radial-gradient(ellipse 142% 64% at 50% -6%,rgba(255,206,90,.55),transparent 66%),
+  radial-gradient(ellipse 122% 54% at 50% 106%,rgba(255,172,26,.42),transparent 62%),
+  radial-gradient(ellipse 92% 44% at 22% 64%,rgba(255,224,132,.24),transparent 66%),
+  radial-gradient(ellipse 88% 40% at 82% 40%,rgba(255,216,110,.20),transparent 64%),
+  radial-gradient(circle at 50% 44%,rgba(255,234,162,.20),transparent 56%);
+ mix-blend-mode:screen;animation:foilBreath 2.6s ease-in-out infinite}
+
+/* --- 金卡：中心缓慢旋转的金色光轮（提升辨识度）--- */
+.foil-halo{position:absolute;left:50%;top:34%;width:190px;height:190px;
+ margin:-95px 0 0 -95px;border-radius:50%;pointer-events:none;
+ background:conic-gradient(from 0deg,
+   transparent 0deg,rgba(255,214,120,.30) 40deg,transparent 90deg,
+   transparent 180deg,rgba(255,196,80,.26) 220deg,transparent 270deg);
+ -webkit-mask:radial-gradient(circle,transparent 34%,#000 52%,transparent 72%);
+ mask:radial-gradient(circle,transparent 34%,#000 52%,transparent 72%);
+ mix-blend-mode:screen;animation:haloSpin 9s linear infinite;z-index:1}
+@keyframes haloSpin{to{transform:rotate(360deg)}}
+
+/* --- 银碎：中心冷光轮 --- */
+.foil-halo.silver{background:conic-gradient(from 0deg,
+   transparent 0deg,rgba(220,240,255,.28) 50deg,transparent 110deg,
+   transparent 200deg,rgba(190,220,250,.24) 250deg,transparent 320deg);
+ animation-duration:12s}
+
+/* --- 闪卡：中心彩虹环 --- */
+.foil-halo.flash{background:conic-gradient(from 0deg,
+   transparent 0deg,rgba(255,120,200,.24) 35deg,rgba(120,220,255,.26) 70deg,
+   rgba(255,220,120,.24) 105deg,transparent 145deg,
+   transparent 215deg,rgba(160,240,255,.22) 250deg,rgba(255,150,220,.22) 285deg,
+   transparent 330deg);
+ animation-duration:7s}
+/* 闪卡版标签：与普通版区分 */
+.cn .tier.flashvar{color:#0E2030;background:linear-gradient(120deg,#9FE8FF,#C9A6FF 50%,#FFE08A);
+ padding:2px 8px;font-weight:700;letter-spacing:.6px;
+ box-shadow:0 2px 10px rgba(140,220,255,.55),inset 0 1px 0 rgba(255,255,255,.6)}
 
 /* 特效徽记（贴在卡名上方，不遮挡卡面） */
 .foil-mark{position:absolute;right:9px;bottom:calc(100% + 0px);z-index:8;
@@ -972,23 +1038,25 @@ function cardHtml(c, isNew, isLast, inStage){
     : `<div class="ph">${emoji}</div>`;
 
   const foil = c.foil || "";
+  // 特效层覆盖**整张卡面**（.card-in 内），不加描边
   const foilLayer = foil
-    ? `<div class="foil foil-${foil}"></div>` : "";
+    ? `<div class="foil foil-${foil}"></div>
+       <div class="foil-halo ${foil}"></div>
+       ${foil === "flash" ? '<div class="foil foil-halo flash-glow"></div>' : ""}` : "";
   const foilMark = foil
     ? `<div class="foil-mark ${foil}">${({flash:"闪卡",silver:"银碎",gold:"金卡"})[foil]}</div>` : "";
-  const goldCorners = foil === "gold"
-    ? `<span class="foil-corner tl"></span><span class="foil-corner tr"></span>
-       <span class="foil-corner bl"></span><span class="foil-corner br"></span>` : "";
 
   return `<div class="card t-${c.rarity}" style="background:linear-gradient(150deg,var(--c1),var(--c2) 46%,var(--c3));box-shadow:0 6px 22px var(--gl)"${click}>
   <div class="card-in" style="background:linear-gradient(165deg,var(--c3),#140806 62%)">
     <div class="rar-tag" title="收藏价值 ${(c.rarity_value||0).toFixed(2)} · 价格50%+热量30%+蛋白20%"><span>${c.rarity}</span></div>
     ${scoreBadge(c)}
     ${isNew ? '<div class="new">NEW</div>' : ""}
-    <div class="art">${art}${foilLayer}${goldCorners}</div>
+    ${foilLayer}
+    <div class="art">${art}</div>
     <div class="cn">${esc(c.name)}${c.is_combo
       ? `<span class="tier combo">套餐</span>`
-      : `<span class="tier">${esc(c.category)}</span>`}${foilMark}</div>
+      : `<span class="tier">${esc(c.category)}</span>`}${c.is_variant
+      ? `<span class="tier flashvar">闪卡版</span>` : ""}${foilMark}</div>
     <div class="panel">
       <div class="price-row"><span class="price">¥${c.price.toFixed(2)}</span><span class="price-unit">门店价</span></div>
       <div class="kcal-row">
