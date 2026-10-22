@@ -92,8 +92,9 @@ payload = {
         "storeCode": "3230366",
         "address": "胜利南街2号沈阳站候车室夹层10号商铺",
         "sampledAt": "2026-10-20",
-        "thresholds": {k: round(v, 1) for k, v in th["single"].items()},
-        "thresholdsCombo": {k: round(v, 1) for k, v in th["combo"].items()},
+        # 稀有度规则：按价格档 + 品类划分，与健康度无关
+        "rarityRule": "价格档 D（>45元）→SSR；C（30~45元）或 B 档汉堡（≥24元）→UR；其余→R",
+        "rarityNote": "稀有度表示收集难度（贵重正餐更难抽到），与健康度评分相互独立",
         "weights": {"SSR": 5, "UR": 20, "R": 75},
         "recoverHours": 4,
         "initialPoints": 5,
