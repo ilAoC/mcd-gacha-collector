@@ -337,6 +337,7 @@ class Card:
     is_combo: bool = False           # 是否为套餐
     combo_items: List[str] = field(default_factory=list)  # 套餐默认搭配的组件名
     # ---- 卡面展示用的通俗标签（原始克数不显示）----
+    rarity_value: float = 0.0        # 综合收藏价值分 0~1（决定稀有度，与健康度无关）
     meal_share: float = 0.0          # 占每日参考摄入 2000 kcal 的百分比
     protein_tag: str = "—"           # 蛋白质供能比等级：高/中/低
     fat_tag: str = "—"               # 脂肪供能比等级：低/中/高
@@ -388,20 +389,35 @@ MIN_POOL_FOR_QUANTILE = 8
 FALLBACK_THRESHOLDS = {"SSR": 75.0, "UR": 55.0}
 
 
-# ---- 稀有度规则（与健康度完全解耦）----
+# ---- 稀有度规则（综合「收藏价值」，与健康度完全解耦）----
 #:
 #: 设计原则：**稀有度回答「值不值得收集」，健康度回答「好不好」**。
 #: 两者是正交维度。若稀有度由健康度决定，会出现
 #: 「高热量低营养 = R 档」这类误导——玩家会误以为 R 档就是差。
 #:
-#: 稀有度改为按**价格档 + 品类价值**划分（经典抽卡逻辑）：
-#:   SSR  D 档（> ¥45）—— 贵重正餐，收集门槛最高
-#:   UR   C 档（¥30~45）或 B 档中汉堡类 —— 中价位主食
-#:   R    A 档（≤ ¥15）与平价小件（薯条/饮品/甜点/小食）
+#: 稀有度改由**综合收藏价值分**决定，三个维度加权：
+#:   价格 50% —— 越贵重越难收集（经典抽卡逻辑）
+#:   热量载荷 30% —— 正餐份量越足越有收集价值
+#:   蛋白含量 20% —— 营养密度高的更有收集价值
 #:
-#: 实测 53 张卡分布：SSR 15 / UR 23 / R 15，三档均衡。
+#: 三个维度都是**「越高越稀有」**，与健康度的方向无关。
 
-#: 归入 UR 的汉堡类品类（正餐主食，价格 15~45 元区间）
+#: 价格归一化上限（元）—— 取卡池内最高价
+RARITY_PRICE_CAP = 62.5
+
+#: 热量载荷归一化上限（kcal）—— 取卡池内最高值附近
+RARITY_KCAL_CAP = 1000.0
+
+#: 蛋白含量归一化上限（g）
+RARITY_PROTEIN_CAP = 40.0
+
+#: 综合收藏价值的三项权重
+RARITY_WEIGHTS = {"price": 0.50, "calorie": 0.30, "protein": 0.20}
+
+#: 三档的价值分位数（R 取后 58%，UR 取 42%~75%，SSR 取前 25%）
+RARITY_TIERS = {"SSR": 0.75, "UR": 0.42}
+
+#: 归入 UR 的汉堡类品类（保留给旧数据兼容）
 UR_BURGER_CATEGORIES = {"汉堡"}
 
 #: 归入 SSR 的最低价格（元）
@@ -411,28 +427,75 @@ SSR_PRICE_FLOOR = 45.0
 UR_BURGER_PRICE_FLOOR = 24.0
 
 
-def assign_rarity(price: float, price_tier_: str, category: str) -> str:
+def rarity_value(price: float, calories: float, protein: float) -> float:
     """
-    按价格档 + 品类划分稀有度（**与健康度无关**）。
+    综合收藏价值分 0~1（越高越稀有）。
 
-    规则：
-      SSR —— 价格档 D（> 45 元）
-      UR  —— 价格档 C（30~45 元），或 B 档中的汉堡类（≥24 元）
-      R   —— 其余（A 档与平价小件）
+    与健康度**完全无关**：三个维度都是「越高越稀有」，
+    但它们衡量的都是「收集价值」而非「营养质量」。
+
+      价格 50%：min(price / 62.5, 1.0)
+      热量 30%：min(calories / 1000, 1.0)  —— 份量越足越有收集价值
+      蛋白 20%：min(protein / 40, 1.0)
+
+    实测 53 张卡分布：0.068 ~ 0.990
+    """
+    p = min(price / RARITY_PRICE_CAP, 1.0)
+    k = min(calories / RARITY_KCAL_CAP, 1.0)
+    pr = min(protein / RARITY_PROTEIN_CAP, 1.0)
+    return round(
+        RARITY_WEIGHTS["price"] * p
+        + RARITY_WEIGHTS["calorie"] * k
+        + RARITY_WEIGHTS["protein"] * pr,
+        4,
+    )
+
+
+def assign_rarity(price: float, price_tier_: str, category: str,
+                  calories: float = 0.0, protein: float = 0.0,
+                  thresholds: Optional[Dict[str, float]] = None) -> str:
+    """
+    按综合收藏价值划分稀有度（**与健康度无关**）。
+
+    流程：
+      1. 算综合收藏价值分（价格 50% + 热量 30% + 蛋白 20%）
+      2. 用**卡池内分位数**切三档（价值前 25% = SSR，42%~75% = UR，其余 R）
+
+    分位数而非固定分数线：各门店菜单结构差异大，
+    固定分数线会导致某些门店抽不到 SSR。
 
     :param price: 门店售价（元）
-    :param price_tier_: 价格档 "A"/"B"/"C"/"D"
-    :param category: 品类（"汉堡"/"饮品"/"薯条"…）
+    :param price_tier_: 价格档（保留参数，兼容旧调用）
+    :param category: 品类（保留参数，兼容旧调用）
+    :param calories: 热量（kcal）
+    :param protein: 蛋白质（g）
+    :param thresholds: 价值分阈值 {"SSR": 0.74, "UR": 0.27}
     """
-    if price_tier_ == "D" or price >= SSR_PRICE_FLOOR:
+    v = rarity_value(price, calories, protein)
+    th = thresholds or RARITY_FALLBACK_THRESHOLDS
+    if v >= th["SSR"]:
         return "SSR"
-    if price_tier_ == "C":
-        return "UR"
-    if category in UR_BURGER_CATEGORIES and price >= UR_BURGER_PRICE_FLOOR:
-        return "UR"
-    if price_tier_ == "B":
+    if v >= th["UR"]:
         return "UR"
     return "R"
+
+
+#: 卡池过小时的兜底阈值（价值分）
+RARITY_FALLBACK_THRESHOLDS = {"SSR": 0.70, "UR": 0.30}
+
+
+def compute_rarity_thresholds(cards: List["Card"]) -> Dict[str, float]:
+    """按卡池内的综合价值分布，计算三档阈值（分位数法）。"""
+    values = [rarity_value(c.price, c.calories, c.protein) for c in cards]
+    if len(values) < MIN_POOL_FOR_QUANTILE:
+        return dict(RARITY_FALLBACK_THRESHOLDS)
+    ordered = sorted(values)
+    n = len(ordered)
+
+    def pct(p: float) -> float:
+        return ordered[int(round(p * (n - 1)))]
+
+    return {"SSR": pct(RARITY_TIERS["SSR"]), "UR": pct(RARITY_TIERS["UR"])}
 
 
 def assign_rarity_by_score(health_score: float,
@@ -574,14 +637,13 @@ def build_cards(
         hs = item.health_score
         tier = price_tier(price)
         cat = guess_category(item.name)
-        rarity = assign_rarity(price, tier, cat)
-        cid = f"{rarity.lower()}_{_slug(item.name)}"
+        cid = f"_{_slug(item.name)}"  # 稀有度前缀稍后回填
         cards.append(Card(
-            id=cid, name=item.name, rarity=rarity, price=price,
+            id=cid, name=item.name, rarity="R", price=price,
             calories=item.energy_kcal, protein=item.protein, fat=item.fat,
             carbohydrate=item.carbohydrate, sodium=item.sodium, health_score=hs,
             price_tier=tier, category=cat,
-            image_path=f"assets/cards/{cid}.png", is_combo=False,
+            image_path="", is_combo=False,
             meal_share=item.meal_share, protein_tag=item.protein_tag,
             fat_tag=item.fat_tag, sodium_tag=item.sodium_tag,
             energy_tag=item.energy_tag,
@@ -590,19 +652,27 @@ def build_cards(
     for row, item, price in combos:
         hs = item.combo_health_score
         tier = price_tier(price)
-        rarity = assign_rarity(price, tier, "套餐")
-        cid = f"{rarity.lower()}_{_slug(item.name)}"
+        cid = f"_{_slug(item.name)}"
         cards.append(Card(
-            id=cid, name=item.name, rarity=rarity, price=price,
+            id=cid, name=item.name, rarity="R", price=price,
             calories=item.energy_kcal, protein=item.protein, fat=item.fat,
             carbohydrate=item.carbohydrate, sodium=item.sodium, health_score=hs,
             price_tier=tier, category="套餐",
-            image_path=f"assets/cards/{cid}.png", is_combo=True,
+            image_path="", is_combo=True,
             combo_items=list(row.get("items", [])),
             meal_share=item.meal_share, protein_tag=item.protein_tag,
             fat_tag=item.fat_tag, sodium_tag=item.sodium_tag,
             energy_tag=item.energy_tag,
         ))
+
+    # 第二趟：按全池价值分位数定稀有度，回填 id / image_path
+    th_rar = compute_rarity_thresholds(cards)
+    for c in cards:
+        c.rarity_value = rarity_value(c.price, c.calories, c.protein)
+        c.rarity = assign_rarity(c.price, c.price_tier, c.category,
+                                 c.calories, c.protein, th_rar)
+        c.id = f"{c.rarity.lower()}_{c.id.lstrip('_')}"
+        c.image_path = f"assets/cards/{c.id}.png"
     return cards
 
 
