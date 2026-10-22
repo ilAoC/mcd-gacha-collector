@@ -16,7 +16,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "skills", "mcd-gacha-collector", "scripts"))
-from gacha import build_cards, compute_thresholds, pool_thresholds, RARITIES  # noqa: E402
+from gacha import (build_cards, compute_thresholds, pool_thresholds, RARITIES,  # noqa: E402
+                  compute_rarity_thresholds, rarity_value)
 from image_map import IMAGE_MAP  # noqa: E402
 from combo_data import build_combo_rows  # noqa: E402
 
@@ -63,6 +64,7 @@ rows = [{"productName": n, "energyKcal": v[0], "protein": v[1], "fat": v[2],
 combos = build_combo_rows()
 cards = build_cards(rows, PRICES, combos)
 th = pool_thresholds(rows, combos)
+rarity_th = compute_rarity_thresholds(cards)
 
 # 注入 MCP 真实卡面图片与餐品编码
 combo_by_name = {r["name"]: r for r in combos}
@@ -92,9 +94,12 @@ payload = {
         "storeCode": "3230366",
         "address": "胜利南街2号沈阳站候车室夹层10号商铺",
         "sampledAt": "2026-10-20",
-        # 稀有度规则：按价格档 + 品类划分，与健康度无关
-        "rarityRule": "价格档 D（>45元）→SSR；C（30~45元）或 B 档汉堡（≥24元）→UR；其余→R",
-        "rarityNote": "稀有度表示收集难度（贵重正餐更难抽到），与健康度评分相互独立",
+        # 稀有度规则：综合收藏价值分（价格 50% + 热量 30% + 蛋白 20%），与健康度无关
+        "rarityRule": "综合收藏价值分 = 价格 50% + 热量载荷 30% + 蛋白含量 20%；"
+                      "按卡池内分位数切档：前 25% → SSR，42%~75% → UR，其余 → R",
+        "rarityNote": "稀有度表示收集难度（贵重、正餐份量的更难抽到），与健康度评分相互独立",
+        "rarityThresholds": {k: round(v, 3) for k, v in rarity_th.items()},
+        "rarityWeights": {"price": 0.50, "calorie": 0.30, "protein": 0.20},
         "weights": {"SSR": 5, "UR": 20, "R": 75},
         "recoverHours": 4,
         "initialPoints": 5,
