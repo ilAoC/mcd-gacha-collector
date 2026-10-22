@@ -873,7 +873,7 @@ function cardHtml(c, isNew, isLast, inStage){
 
   return `<div class="card t-${c.rarity}" style="background:linear-gradient(150deg,var(--c1),var(--c2) 46%,var(--c3));box-shadow:0 6px 22px var(--gl)"${click}>
   <div class="card-in" style="background:linear-gradient(165deg,var(--c3),#140806 62%)">
-    <div class="rar-tag"><span>${c.rarity}</span></div>
+    <div class="rar-tag" title="收藏价值 ${(c.rarity_value||0).toFixed(2)} · 价格50%+热量30%+蛋白20%"><span>${c.rarity}</span></div>
     ${scoreBadge(c)}
     ${isNew ? '<div class="new">NEW</div>' : ""}
     <div class="art">${art}</div>
@@ -1110,10 +1110,11 @@ function showCard(c){
       <summary>稀有度说明 · 详细营养 · 评分标准</summary>
       <div class="more-body">
         <div class="rarity-note">
-          <b>${c.rarity} 稀有度</b>代表<b>收集难度</b>，与健康度无关：<br>
-          SSR = 价格档 D（&gt;45 元的贵重正餐，最难抽到）<br>
-          UR = 价格档 C（30~45 元）或 B 档汉堡<br>
-          R = A 档平价小件（饮品 / 薯条 / 甜点）
+          <b>${c.rarity} · 收藏价值 ${(c.rarity_value||0).toFixed(2)}</b><br>
+          稀有度按<b>综合收藏价值</b>划分，与健康度<b>完全无关</b>：<br>
+          价格 50% · 热量载荷 30% · 蛋白含量 20%<br>
+          本卡：¥${c.price.toFixed(1)} · ${c.calories.toFixed(0)} kcal · 蛋白 ${c.protein.toFixed(0)}g<br>
+          <b>贵重、正餐份量的更难抽到</b>——高稀有度 ≠ 高健康度。
         </div>
         <div class="nutri-grid">
           <div class="ng"><div class="ng-v">${c.protein.toFixed(0)}<span>g</span></div><div class="ng-k">蛋白质</div></div>
