@@ -67,9 +67,11 @@ if m:
           json.dumps(web_data, sort_keys=True) == json.dumps(data, sort_keys=True))
 
 print("\n[2/8] 卡池重算一致性")
-# 关键：必须用**全卡池**（单品+套餐）重建，否则稀有度阈值（按全池价值分位数）不一致
-_single_cards = [c for c in cards if not c.get("is_combo")]
-_combo_cards = [c for c in cards if c.get("is_combo")]
+# 闪卡是独立卡项（`is_variant`），重算时只算原卡
+_base_cards = [c for c in cards if not c.get("is_variant")]
+# 单品与套餐分别重建（套餐需 combo_rows 才能还原）
+_single_cards = [c for c in _base_cards if not c.get("is_combo")]
+_combo_cards = [c for c in _base_cards if c.get("is_combo")]
 _rebuilt_rows = [{
     "productName": c["name"],
     "energyKcal": c["calories"], "protein": c["protein"], "fat": c["fat"],
@@ -86,12 +88,12 @@ rebuilt = build_cards(_rebuilt_rows,
                       {c["name"]: c["price"] for c in _single_cards},
                       _rebuilt_combos)
 
-check("重算卡池数量一致", len(rebuilt) == len(cards),
-      f"{len(rebuilt)} vs {len(cards)}")
+check("重算卡池数量一致", len(rebuilt) == len(_base_cards),
+      f"{len(rebuilt)} vs {len(_base_cards)}")
 
 by_name = {r.name: r for r in rebuilt}
 mismatch = []
-for c in cards:
+for c in _base_cards:
     r = by_name.get(c["name"])
     if not r:
         mismatch.append(f"{c['name']} 缺失")
@@ -116,22 +118,36 @@ class _C:
         self.rarity_value = rarity_value(d["price"], d["calories"], d["protein"])
 
 
-_probes = [_C(c) for c in cards]
+# 闪卡是独立卡项，参与抽样时按原卡处理（_base_cards 已在上方定义）
+_probes = [_C(c) for c in _base_cards]
 assign_rarity_by_band(_probes)
 _by_name = {p.name: p.rarity for p in _probes}
-bad_rar = [c["name"] for c in cards
+bad_rar = [c["name"] for c in _base_cards
            if _by_name.get(c["name"]) != c["rarity"]]
 check("稀有度与分层规则一致", not bad_rar, str(bad_rar[:3]))
-bad_val = [c["name"] for c in cards
+bad_val = [c["name"] for c in _base_cards
            if abs(c.get("rarity_value", 0) - rarity_value(c["price"], c["calories"], c["protein"])) > 0.001]
 check("每张卡的价值分与公式一致", not bad_val, str(bad_val[:3]))
 
 dist = {r: sum(1 for c in cards if c["rarity"] == r) for r in RARITIES}
 check("三档均有卡", all(v > 0 for v in dist.values()), str(dist))
 
+# 闪卡独立卡项校验
+_variants = [c for c in cards if c.get("is_variant")]
+check("闪卡变体已生成", len(_variants) > 0, f"{len(_variants)} 张")
+check("变体全部为闪卡特效", all(c.get("foil") == "flash" for c in _variants))
+check("变体 id 带 _flash 后缀",
+      all(c["id"].endswith("_flash") for c in _variants))
+check("变体 rarity 与原卡一致",
+      all(any(b["id"] == c["id"][:-6] and b["rarity"] == c["rarity"]
+              for b in cards) for c in _variants))
+check("总卡数 = 原卡 + 变体",
+      len(cards) == len(_base_cards) + len(_variants),
+      f"{len(cards)} = {len(_base_cards)} + {len(_variants)}")
+
 # 分层验证：每个有足够卡的预算层都应有 SSR
 _band_dist = {}
-for c in cards:
+for c in _base_cards:
     b = 0 if c["price"] < 15 else (1 if c["price"] < 30 else (2 if c["price"] < 50 else 3))
     _band_dist.setdefault(b, {"SSR": 0, "UR": 0, "R": 0, "n": 0})
     _band_dist[b]["n"] += 1
@@ -193,8 +209,13 @@ check("全部卡牌都有图片", len(with_img) == len(cards),
       f"{len(with_img)}/{len(cards)}")
 check("图片均来自麦当劳官方 CDN",
       all(c["image_url"].startswith("https://menu-img.mcd.cn/") for c in with_img))
-check("图片 URL 无重复",
-      len({c["image_url"] for c in with_img}) == len(with_img))
+# 闪卡变体复用原卡图源（设计上就该如此），所以只校验**原卡**无重复
+_base_with_img = [c for c in with_img if not c.get("is_variant")]
+check("原卡图片 URL 无重复",
+      len({c["image_url"] for c in _base_with_img}) == len(_base_with_img))
+check("闪卡变体复用原卡图源",
+      all(any(b["image_url"] == c["image_url"] for b in _base_cards)
+          for c in with_img if c.get("is_variant")))
 check("每张卡有餐品编码", all(c.get("product_code") for c in cards))
 # 单品图片来自 image_map，套餐图片来自 combo_data，两者都不应缺失
 check("单品图片映射表覆盖完整",
