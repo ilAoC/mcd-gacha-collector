@@ -23,6 +23,7 @@ from gacha import (  # noqa: E402
     COST_PER_DRAW, INITIAL_POINTS, assign_rarity, assign_rarity_by_score,
     rarity_value, compute_rarity_thresholds,
     assign_rarity_by_band, assign_foil, _band_of, RARITY_BANDS, FOIL_TYPES, FOIL_ODDS,
+    expand_flash_variants, VARIANT_SUFFIX,
     affordable_summary,
     build_cards, calorie_band, compute_thresholds, guess_category, price_tier,
     simulate_distribution, validate_pool, CST, MIN_POOL_FOR_QUANTILE,
@@ -157,6 +158,28 @@ check("R 档不出金卡",
       all(c.foil != "gold" for c in _pool if c.rarity == "R"))
 check("SSR 概率最高（金卡率 > R 档）",
       FOIL_ODDS["SSR"].get("gold",0) > FOIL_ODDS["R"].get("gold",0))
+
+# --- 闪卡独立卡项 ---
+_base = [_mk(300 + i, 25.0, 2.0) for i in range(8)]
+for _c in _base:
+    _c.rarity_value = rarity_value(_c.price, _c.calories, _c.protein)
+assign_rarity_by_band(_base)
+assign_foil(_base)
+_before = len(_base)
+_exp = expand_flash_variants(_base, ratio=1.0)
+_var = [c for c in _exp if c.is_variant]
+check("闪卡变体已生成", len(_var) > 0, f"{len(_var)} 张")
+check("变体全部标记 foil=flash", all(c.foil == "flash" for c in _var))
+check("变体 id 带 _flash 后缀",
+      all(c.id.endswith(VARIANT_SUFFIX) for c in _var))
+check("变体与原卡并存（总数=原卡+变体）",
+      len(_exp) == _before + len(_var))
+check("变体 rarity 与原卡一致",
+      all(any(b.id == c.id[:-len(VARIANT_SUFFIX)] and b.rarity == c.rarity
+              for b in _base) for c in _var))
+check("变体与原卡是不同对象（独立卡项）",
+      all(c is not any(b for b in _base if b.id == c.id[:-len(VARIANT_SUFFIX)])
+          for c in _var))
 
 # 旧版按健康度分级的实现（保留兼容）
 th_custom = {"SSR": 65.0, "UR": 50.0}
