@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gacha import (  # noqa: E402
     Card, GachaEngine, Ledger, NutritionItem, RARITIES, RECOVER_HOURS,
     COST_PER_DRAW, INITIAL_POINTS, assign_rarity, assign_rarity_by_score,
+    rarity_value, compute_rarity_thresholds,
     affordable_summary,
     build_cards, calorie_band, compute_thresholds, guess_category, price_tier,
     simulate_distribution, validate_pool, CST, MIN_POOL_FOR_QUANTILE,
@@ -73,31 +74,43 @@ check("健康度在 0-100 之间", 0 <= NutritionItem.from_mcp_row(row).health_s
 check("0 卡餐品不发散", NutritionItem.from_mcp_row({"productName": "无糖", "energyKcal": 0}).health_score >= 0)
 
 # ============================================================
-print("\n[2/9] 稀有度（按价格档+品类，与健康度无关）与价格分档")
+print("\n[2/9] 稀有度（综合收藏价值分，与健康度无关）与价格分档")
 # ============================================================
-# D 档（>45 元）→ SSR
-check("D 档→SSR", assign_rarity(50.0, "D", "套餐") == "SSR")
-check("D 档边界 45 元→SSR", assign_rarity(45.0, "D", "套餐") == "SSR")
-check("高价位→SSR（不看品类）", assign_rarity(62.5, "D", "汉堡") == "SSR")
+# rarity_value 三项加权：价格 50% + 热量 30% + 蛋白 20%
+_th = {"SSR": 0.70, "UR": 0.30}
 
-# C 档（30~45 元）→ UR
-check("C 档→UR", assign_rarity(35.0, "C", "汉堡") == "UR")
-check("C 档套餐→UR", assign_rarity(43.5, "C", "套餐") == "UR")
+check("价值分：全零为 0", rarity_value(0, 0, 0) == 0.0)
+check("价值分：价格最高为 0.5", abs(rarity_value(62.5, 0, 0) - 0.5) < 0.001)
+check("价值分：热量最高为 0.3", abs(rarity_value(0, 1000, 0) - 0.3) < 0.001)
+check("价值分：蛋白最高为 0.2", abs(rarity_value(0, 0, 40) - 0.2) < 0.001)
+check("价值分：三项全满为 1.0", abs(rarity_value(62.5, 1000, 40) - 1.0) < 0.001)
+check("价值分：封顶不溢出", rarity_value(999, 9999, 999) <= 1.0)
 
-# B 档汉堡（≥24 元）→ UR
-check("B 档高价汉堡→UR", assign_rarity(28.0, "B", "汉堡") == "UR")
-check("A 档汉堡→R", assign_rarity(19.0, "A", "汉堡") == "R")
+# 高价值 → SSR
+check("高价高热量高蛋白→SSR",
+      assign_rarity(62.5, "D", "套餐", 1143, 34, _th) == "SSR")
+# 中价值 → UR
+check("中价中热量→UR",
+      assign_rarity(38.0, "C", "汉堡", 707, 34, _th) == "UR")
+# 低价值 → R
+check("平价低热量→R",
+      assign_rarity(10.0, "A", "饮品", 147, 0, _th) == "R")
 
-# B 档非汉堡 → UR
-check("B 档套餐→UR", assign_rarity(22.0, "B", "套餐") == "UR")
+# 关键断言：稀有度与健康度无关
+# 低热量但极贵 → 仍可 SSR（说明不是按健康度分档）
+check("低热量高价格→SSR（证明非健康度驱动）",
+      assign_rarity(62.5, "D", "套餐", 100, 35, _th) == "SSR")
+# 高热量但便宜 + 无蛋白 → 仍可 R（热量项只占 30%，不足以翻盘）
+check("高热量低价格无蛋白→R（证明非健康度驱动）",
+      assign_rarity(5.0, "A", "饮品", 500, 0, _th) == "R")
 
-# A 档与平价小件 → R
-check("A 档→R", assign_rarity(10.0, "A", "饮品") == "R")
-check("A 档甜点→R", assign_rarity(14.0, "A", "甜点") == "R")
+# 兜底阈值模式
+check("兜底：价值 0.95→SSR", assign_rarity(62.5, "D", "套餐", 1000, 40) == "SSR")
+check("兜底：价值 0.15→R", assign_rarity(10.0, "A", "饮品", 100, 2) == "R")
 
-# 关键断言：稀有度与健康度无关（低分也能是 SSR，高分也能是 R）
-check("低健康度仍可为 SSR（价格决定）", assign_rarity(55.0, "D", "套餐") == "SSR")
-check("高价位仍是 R 不可能", assign_rarity(10.0, "A", "饮品") != "SSR")
+# 分位数阈值模式
+check("自定义价值阈值→SSR", assign_rarity(50.0, "D", "套餐", 900, 30, {"SSR": 0.5, "UR": 0.2}) == "SSR")
+check("自定义价值阈值→UR", assign_rarity(30.0, "C", "汉堡", 500, 20, {"SSR": 0.5, "UR": 0.2}) == "UR")
 
 # 旧版按健康度分级的实现（保留兼容）
 th_custom = {"SSR": 65.0, "UR": 50.0}
@@ -195,11 +208,16 @@ check("无缺失价格", val["missing_price"] == 0)
 # 解耦验证：稀有度必须由价格决定，与健康度无关
 cards_by_price = sorted(cards, key=lambda c: c.price)
 check("最低价卡不是 SSR",
-      assign_rarity(cards_by_price[0].price, cards_by_price[0].price_tier,
-                    cards_by_price[0].category) != "SSR")
+      rarity_value(cards_by_price[0].price, cards_by_price[0].calories,
+                   cards_by_price[0].protein) < rarity_value(cards_by_price[-1].price,
+                   cards_by_price[-1].calories, cards_by_price[-1].protein))
 check("最低价卡是 A 档", cards_by_price[0].price_tier == "A")
-check("稀有度仅由价格与品类决定（重算一致）",
-      all(assign_rarity(c.price, c.price_tier, c.category) == c.rarity for c in cards))
+_rt = compute_rarity_thresholds(cards)
+check("稀有度由综合价值分决定（重算一致）",
+      all(assign_rarity(c.price, c.price_tier, c.category,
+                        c.calories, c.protein, _rt) == c.rarity for c in cards))
+check("价值分单调对应价格单调",
+      cards_by_price[0].rarity_value <= cards_by_price[-1].rarity_value)
 
 # 缺价格的餐品应被剔除
 partial = build_cards(rows[:5], {})
