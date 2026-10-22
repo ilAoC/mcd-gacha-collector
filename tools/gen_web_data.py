@@ -96,7 +96,7 @@ payload = {
         "sampledAt": "2026-10-20",
         # 稀有度规则：综合收藏价值分（价格 50% + 热量 30% + 蛋白 20%），与健康度无关
         "rarityRule": "综合收藏价值分 = 价格 50% + 热量载荷 30% + 蛋白含量 20%；"
-                      "按卡池内分位数切档：前 25% → SSR，42%~75% → UR，其余 → R",
+                      "按预算层（≤15 / 15~30 / 30~50 / >50 元）分层抽样，层内前 25% → SSR",
         "rarityNote": "稀有度表示收集难度（贵重、正餐份量的更难抽到），与健康度评分相互独立",
         "rarityThresholds": {k: round(v, 3) for k, v in rarity_th.items()},
         "rarityWeights": {"price": 0.50, "calorie": 0.30, "protein": 0.20},
