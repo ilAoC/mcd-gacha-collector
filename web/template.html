@@ -296,6 +296,14 @@ body{
 .st::before{content:"";width:5px;height:17px;
  background:linear-gradient(180deg,var(--mcd-gold),var(--mcd-red));border-radius:2px}
 .st small{margin-left:auto;font-size:11.5px;color:var(--dim);font-weight:500}
+/* 清空收藏册：低调的幽灵按钮，hover 才显红 */
+.btn-clear{margin-left:8px;font-family:var(--f-lab);font-size:10.5px;font-weight:700;
+ letter-spacing:.5px;color:var(--dim);background:transparent;cursor:pointer;
+ border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:3px 11px;
+ transition:all .2s;white-space:nowrap}
+.btn-clear:hover{color:#FF8A76;border-color:rgba(255,138,118,.5);
+ background:rgba(255,138,118,.09)}
+.btn-clear:active{transform:scale(.96)}
 
 /* ============ 卡牌 · 二次元游戏风 ============ */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(174px,1fr));gap:15px}
@@ -551,6 +559,44 @@ body{
 .mrow span:first-child{color:var(--dim)}
 .mrow b{font-family:var(--f-num);font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:.3px}
 .mnote{font-size:11.5px;color:#C9A794;margin-top:13px;line-height:1.75}
+
+/* ---- 轻提示 toast ---- */
+#toast{position:fixed;left:50%;bottom:32px;transform:translate(-50%,14px);
+ z-index:200;padding:9px 20px;border-radius:22px;pointer-events:none;
+ background:linear-gradient(120deg,rgba(58,20,8,.97),rgba(28,12,8,.97));
+ border:1px solid rgba(255,199,44,.42);color:var(--mcd-gold);
+ font-family:var(--f-lab);font-size:12.5px;font-weight:700;letter-spacing:.5px;
+ box-shadow:0 8px 26px rgba(0,0,0,.62);opacity:0;
+ transition:opacity .24s, transform .24s cubic-bezier(.34,1.4,.64,1)}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---- 详情页折叠面板：把长说明收起来，避免堆叠 ---- */
+.more{margin-top:12px;border-top:1px solid rgba(255,255,255,.08)}
+.more summary{list-style:none;cursor:pointer;padding:9px 0 7px;
+ font-family:var(--f-lab);font-size:11px;font-weight:700;letter-spacing:.8px;
+ color:var(--mcd-gold);display:flex;align-items:center;gap:6px;
+ transition:opacity .18s}
+.more summary::-webkit-details-marker{display:none}
+.more summary:hover{opacity:.72}
+.more summary::before{content:"▸";font-size:9px;transition:transform .2s;display:inline-block}
+.more[open] summary::before{transform:rotate(90deg)}
+.more-body{padding:2px 0 10px;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* 稀有度说明块：明确「稀有≠健康」 */
+.rarity-note{background:rgba(255,199,44,.07);border-left:3px solid var(--mcd-gold);
+ border-radius:6px;padding:9px 11px;margin-bottom:11px;
+ font-size:11.5px;line-height:1.72;color:#E8CFA8}
+.rarity-note b{color:var(--mcd-gold)}
+
+/* 详情页营养 2×2 网格 */
+.nutri-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px}
+.ng{background:rgba(0,0,0,.34);border-radius:8px;padding:7px 10px;
+ border:1px solid rgba(255,255,255,.07)}
+.ng-v{font-family:var(--f-num);font-size:15px;font-weight:900;line-height:1.1;
+ display:flex;align-items:baseline;gap:3px}
+.ng-v span{font-family:var(--f-lab);font-size:9px;font-weight:700;opacity:.6}
+.ng-k{font-size:9.5px;color:var(--dim);margin-top:3px;letter-spacing:.3px}
 .mbtns{display:flex;gap:9px;margin-top:18px}
 .mbtns button{flex:1;padding:12px;border:none;border-radius:11px;font-size:14px;
  font-weight:900;cursor:pointer;font-family:inherit}
@@ -644,6 +690,16 @@ footer a{color:var(--mcd-gold);text-decoration:none}
   </div>
 </div>
 
+<!-- ============ 清空收藏册确认 ============ -->
+<div class="mask" id="maskClear">
+  <div class="sheet">
+    <h3>清空收藏册？</h3>
+    <div class="sub" id="clearInfo">此操作不可撤销</div>
+    <button class="sbtn" id="btnClearYes" style="background:linear-gradient(120deg,#E5533D,#C42B18);color:#fff">确认清空</button>
+    <button class="sbtn ghost" id="btnClearNo">再想想</button>
+  </div>
+</div>
+
 <!-- ============ 下单确认弹窗 ============ -->
 <div class="mask" id="maskOrder">
   <div class="sheet">
@@ -693,7 +749,9 @@ footer a{color:var(--mcd-gold);text-decoration:none}
   <div class="hint" id="hint"></div>
 </div>
 
-<div class="st">我的收藏册<small id="colInfo"></small></div>
+<div class="st">我的收藏册<small id="colInfo"></small>
+  <button class="btn-clear" id="btnClear">清空收藏册</button>
+</div>
 <div class="grid" id="colBox"></div>
 
 <!-- 统计：压成一条细窄数据条，置于页面最下 -->
@@ -1043,25 +1101,43 @@ function showCard(c){
     </div>
     <div class="mrow"><span>价格</span><b style="color:var(--mcd-gold)">¥${c.price.toFixed(2)}</b></div>
     <div class="mrow"><span>热量</span><b>${c.calories.toFixed(0)} kcal<span style="font-size:11px;opacity:.7"> · 占日 ${(c.calories/20).toFixed(1)}%</span></b></div>
-    <div class="mrow"><span>健康度评分</span><b style="color:var(--c2,#FFC72C)">${c.health_score.toFixed(1)}<span style="font-size:11px;opacity:.7"> / 100</span></b></div>
-    <div class="mrow" style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px;margin-top:8px">
-      <span>详细营养</span><b style="font-size:11.5px;opacity:.85">
-        蛋白 ${c.protein.toFixed(0)}g · 脂肪 ${c.fat.toFixed(0)}g · 碳水 ${c.carbohydrate.toFixed(0)}g · 钠 ${c.sodium.toFixed(0)}mg</b></div>
+    <div class="mrow"><span>健康度</span><b style="color:var(--c2,#FFC72C)">${c.health_score.toFixed(1)}<span style="font-size:11px;opacity:.7"> / 100</span></b></div>
     <div class="mrow"><span>品类 / 价格档</span><b>${esc(c.category)} · ${esc(c.price_tier)} 档</b></div>
     ${c.is_combo && (c.combo_items||[]).length ? `<div class="mrow"><span>默认搭配</span><b style="font-size:12px">${esc(c.combo_items.join(" + "))}</b></div>` : ""}
-    <div class="mrow"><span>餐品编码</span><b>${esc(c.product_code || c.id)}</b></div>
-    <div class="mnote">卡面数据来自麦当劳 MCP 实采（${esc(META.sampledAt)}）。<br>
-    ${c.is_combo ? "套餐营养为<b>默认搭配</b>的基准值，实际可替换小食与饮料，热量会随之变化；套餐按<b>整餐视角</b>独立评分（满分基准 1000 kcal），与单品口径不同。<br>" : ""}
-    <b>四个标签的判定标准</b>（依据国家卫生健康委《体重管理指导原则（2024 年版）》）：<br>
-    能量：占每日 2000 kcal 的比例，≤640 kcal（32%）为「轻」· ≤800 kcal（40%）为「中」· 其余「重」<br>
-    蛋白：供能比 ≥20% 高 · ≥12% 中 · 其余低（原则推荐 15%~20%，减重期 20%~30%）<br>
-    脂肪：供能比 ≤30% 低 · ≤42% 中 · 其余高（原则推荐 20%~30%）<br>
-    钠：钠密度 ≤120mg/100kcal 低 · ≤220 中 · 其余高<br>
-    健康度 = 单餐能量占比 40% + 蛋白质密度 30% + 低钠 30%。评分仅供趣味参考，不构成营养建议。<br>
-    下单价格以<b>你所在门店实时核价</b>为准，需先选择门店。</div>
+    <div class="mrow"><span>餐品编码</span><b style="font-family:var(--f-num)">${esc(c.product_code || c.id)}</b></div>
+
+    <details class="more">
+      <summary>稀有度说明 · 详细营养 · 评分标准</summary>
+      <div class="more-body">
+        <div class="rarity-note">
+          <b>${c.rarity} 稀有度</b>代表<b>收集难度</b>，与健康度无关：<br>
+          SSR = 价格档 D（&gt;45 元的贵重正餐，最难抽到）<br>
+          UR = 价格档 C（30~45 元）或 B 档汉堡<br>
+          R = A 档平价小件（饮品 / 薯条 / 甜点）
+        </div>
+        <div class="nutri-grid">
+          <div class="ng"><div class="ng-v">${c.protein.toFixed(0)}<span>g</span></div><div class="ng-k">蛋白质</div></div>
+          <div class="ng"><div class="ng-v">${c.fat.toFixed(0)}<span>g</span></div><div class="ng-k">脂肪</div></div>
+          <div class="ng"><div class="ng-v">${c.carbohydrate.toFixed(0)}<span>g</span></div><div class="ng-k">碳水</div></div>
+          <div class="ng"><div class="ng-v">${c.sodium.toFixed(0)}<span>mg</span></div><div class="ng-k">钠</div></div>
+        </div>
+        <div class="mnote" style="margin:0">
+          数据来自麦当劳 MCP 实采（${esc(META.sampledAt)}）。<br>
+          ${c.is_combo ? "套餐营养为<b>默认搭配</b>基准值，可替换小食与饮料；套餐按<b>整餐视角</b>独立评分（基准 1000 kcal）。<br>" : ""}
+          <b>标签判定标准</b>（依据国家卫健委《体重管理指导原则（2024 年版）》）：<br>
+          能量 ≤640 kcal 轻 · ≤800 中 · 其余重<br>
+          蛋白 供能比 ≥20% 高 · ≥12% 中 · 其余低<br>
+          脂肪 供能比 ≤30% 低 · ≤42% 中 · 其余高<br>
+          钠 密度 ≤120mg/100kcal 低 · ≤220 中 · 其余高<br>
+          <b>健康度</b>（0~100）= 能量占比 40% + 蛋白密度 30% + 低钠 30%。<br>
+          健康度与稀有度是<b>两个独立维度</b>：高稀有度不等于高健康度。<br>
+          评分仅供趣味参考，不构成营养建议。下单价格以<b>门店实时核价</b>为准。
+        </div>
+      </div>
+    </details>
+
     <div class="mnote" style="background:rgba(218,41,28,.06);border-left:3px solid #DA291C;padding:8px 10px;border-radius:6px;margin-top:8px;font-size:12px">
-      💡 <b>网页可预览卡面</b>，但<b>真下单</b>需在对话里说：<code>买 ${esc(c.name)}</code><br>
-      我会通过 WorkBuddy 的麦当劳 connector 真实下单并返回订单号。
+      💡 网页可预览卡面，<b>真下单</b>请在对话里说：<code>买 ${esc(c.name)}</code>
     </div>`;
   $("mYes").onclick = () => {
     closeM();
@@ -1168,6 +1244,36 @@ $("btnRefill").onclick = () => {
 };
 
 $("btnDraw").onclick = doDraw;
+
+/* ---------- 清空收藏册（二次确认，不可撤销） ---------- */
+$("btnClear").onclick = () => {
+  const n = led.collection.length;
+  if(n === 0){ return; }
+  const d = led.collection.reduce((s,c)=>s+(c.duplicate_count||1), 0);
+  $("clearInfo").innerHTML =
+    `将删除 <b style="color:#FF8A76">${n}</b> 张卡（共 <b>${d}</b> 次抽卡记录）<br>` +
+    `积分会重置为 ${META.initialPoints}，此操作<b>不可撤销</b>`;
+  openMask("maskClear");
+};
+$("btnClearNo").onclick = () => closeMask("maskClear");
+$("maskClear").addEventListener("click", e => {
+  if(e.target === $("maskClear")) closeMask("maskClear");
+});
+$("btnClearYes").onclick = () => {
+  closeMask("maskClear");
+  const n = led.collection.length;
+  led.collection = [];
+  led.points = META.initialPoints;
+  led.totalDraws = 0;
+  led.lastRefill = 0;
+  save();
+  drawnIds.clear();
+  renderAll();
+  // 视觉反馈：积分数字弹一下
+  $("ptNum").animate([{transform:"scale(1)"},{transform:"scale(1.3)",color:"#FF8A76"},
+                     {transform:"scale(1)"}], {duration:520, easing:"cubic-bezier(.34,1.5,.64,1)"});
+  toast(`已清空 ${n} 张卡`);
+};
 // 演出中：最后一张可点击跳过，其余阶段点击无效（保持逐张节奏）
 $("stage").onclick = () => { if(busy && allowSkip){ skipped = true; closeStage(); } };
 $("inpDraw").addEventListener("input", e => {
@@ -1250,6 +1356,21 @@ setTimeout(ipAutoLocate, 800);
 
 function openMask(id){ $(id).classList.add("on"); }
 function closeMask(id){ $(id).classList.remove("on"); }
+
+/* ---------- 轻提示 toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  let t = $("toast");
+  if(!t){
+    t = document.createElement("div");
+    t.id = "toast";
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("on"), 2200);
+}
 function esc2(s){
   return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
