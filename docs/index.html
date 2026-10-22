@@ -306,7 +306,7 @@ body{
 .btn-clear:active{transform:scale(.96)}
 
 /* ============ 卡牌 · 二次元游戏风 ============ */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(174px,1fr));gap:15px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:15px}
 
 .card{position:relative;border-radius:17px;padding:3px;cursor:pointer;
  transition:transform .22s cubic-bezier(.34,1.56,.64,1),box-shadow .22s;transform-style:preserve-3d}
@@ -324,7 +324,7 @@ body{
 .t-R  {--c1:var(--r-a);  --c2:var(--r-b); --c3:var(--r-c); --gl:rgba(90,169,240,.44)}
 
 /* --- 卡面图片区：主体，不被任何元素遮挡 --- */
-.art{position:relative;width:100%;height:146px;flex:none;overflow:hidden;
+.art{position:relative;width:100%;height:186px;flex:none;overflow:hidden;
  background:linear-gradient(155deg,var(--c3),#120704)}
 .art img{width:100%;height:100%;object-fit:cover;display:block;
  transition:transform .5s cubic-bezier(.34,1.3,.64,1)}
@@ -541,11 +541,19 @@ body{
 /* --- 数据区：独立面板，脱离图片 --- */
 .panel{flex:1;padding:11px 11px 12px;
  background:linear-gradient(180deg,rgba(18,7,4,.5),rgba(18,7,4,.9))}
-.price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:9px}
-.price{font-family:var(--f-num);font-size:21px;font-weight:900;color:var(--mcd-gold);
- line-height:1;letter-spacing:.5px;text-shadow:0 0 16px rgba(255,199,44,.55)}
-.price-unit{font-family:var(--f-lab);font-size:9.5px;color:var(--dim);font-weight:700;
- letter-spacing:.8px}
+.price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:10px;
+ white-space:nowrap;overflow:hidden}
+.price{font-family:var(--f-num);font-size:24px;font-weight:900;color:var(--mcd-gold);
+ line-height:1;letter-spacing:.2px;text-shadow:0 0 18px rgba(255,199,44,.6);
+ flex-shrink:0}
+.price-unit{font-family:var(--f-lab);font-size:10px;color:var(--dim);font-weight:700;
+ letter-spacing:.6px;flex-shrink:0}
+/* 健康度内联显示：与价格同行，避免底部堆叠 */
+.score-inline{margin-left:auto;display:inline-flex;align-items:baseline;gap:3px;
+ font-family:var(--f-lab);font-size:10px;font-weight:700;letter-spacing:.3px;
+ color:var(--dim);flex-shrink:0}
+.score-inline b{font-family:var(--f-num);font-size:16px;font-weight:900;
+ color:var(--c2,#FFC72C);line-height:1;letter-spacing:0}
 
 /* 热量条：数值 + 进度条 + 占日比（替代原四项营养网格） */
 .kcal-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;
@@ -700,6 +708,24 @@ body{
  font-weight:700;letter-spacing:2px;opacity:0;pointer-events:none}
 .stage-hint.on{animation:hintIn .6s ease .9s forwards}
 @keyframes hintIn{to{opacity:.92}}
+
+/* 「已加入收藏册」提示：让用户明确知道这张卡何时进卡册 */
+.stage-collected{position:absolute;top:12%;z-index:13;
+ display:inline-flex;align-items:center;gap:7px;
+ padding:6px 15px;border-radius:20px;pointer-events:none;
+ background:linear-gradient(120deg,rgba(58,20,8,.94),rgba(28,12,8,.94));
+ border:1px solid rgba(255,199,44,.55);
+ box-shadow:0 6px 20px rgba(0,0,0,.55),0 0 18px rgba(255,199,44,.28);
+ opacity:0;transform:translateY(-10px) scale(.9);
+ font-family:var(--f-lab);font-size:12.5px;font-weight:700;letter-spacing:1px;
+ color:var(--mcd-gold)}
+.stage-collected .sc-ico{font-size:13px;font-weight:900;color:#7FE0A0}
+.stage-collected.on{animation:scIn 1.9s cubic-bezier(.34,1.5,.64,1) forwards}
+@keyframes scIn{
+ 0%{opacity:0;transform:translateY(-10px) scale(.9)}
+ 14%{opacity:1;transform:translateY(0) scale(1)}
+ 78%{opacity:1;transform:translateY(0) scale(1)}
+ 100%{opacity:0;transform:translateY(-6px) scale(.96)}}
 
 /* UR 演出（较克制） */
 .ur-veil{position:absolute;inset:0;pointer-events:none;opacity:0;
@@ -933,6 +959,9 @@ footer a{color:var(--mcd-gold);text-decoration:none}
   <div class="rays" id="rays"></div>
   <div class="ssr-word" id="ssrWord">SSR</div>
   <div class="stage-hint" id="stageHint">点击任意处继续</div>
+  <div class="stage-collected" id="stageCollected">
+    <span class="sc-ico">✓</span><span class="sc-txt">已加入收藏册</span>
+  </div>
   <div class="flip-wrap">
     <div class="flip" id="flip">
       <div class="flip-face back">
@@ -1058,19 +1087,17 @@ function cardHtml(c, isNew, isLast, inStage){
       : `<span class="tier">${esc(c.category)}</span>`}${c.is_variant
       ? `<span class="tier flashvar">闪卡版</span>` : ""}${foilMark}</div>
     <div class="panel">
-      <div class="price-row"><span class="price">¥${c.price.toFixed(2)}</span><span class="price-unit">门店价</span></div>
+      <div class="price-row">
+        <span class="price">¥${c.price.toFixed(2)}</span>
+        <span class="price-unit">门店价</span>
+        <span class="score-inline">健康度<b>${c.health_score.toFixed(0)}</b></span>
+      </div>
       <div class="kcal-row">
         <div class="kcal-v">${c.calories.toFixed(0)}<span class="kcal-u">kcal</span></div>
         <div class="kcal-bar" title="占每日参考摄入 ${c.meal_share||(c.calories/20).toFixed(1)}%">
           <div class="kcal-fill" style="width:${Math.min(100,(c.calories/1000)*100).toFixed(0)}%"></div>
         </div>
         <div class="kcal-pct">占日 ${(c.calories/20).toFixed(0)}%</div>
-      </div>
-      <div class="tags">
-        ${tagChip("能量", c.energy_tag)}
-        ${tagChip("蛋白", c.protein_tag)}
-        ${tagChip("脂肪", c.fat_tag)}
-        ${tagChip("钠", c.sodium_tag)}
       </div>
     </div>
     ${(isLast && c.duplicate_count > 1) ? `<div class="dup">×${c.duplicate_count}</div>` : ""}
@@ -1202,6 +1229,7 @@ function closeStage(){
   $("urVeil").classList.remove("on");
   $("ssrWord").classList.remove("on");
   $("stageHint").classList.remove("on");
+  $("stageCollected").classList.remove("on");
   $("flip").classList.remove("go");
   $("flip").classList.remove("summon");
   $("flipFront").classList.remove("ssr-show");
@@ -1219,25 +1247,16 @@ async function doDraw(){
   const pool = (budget == null || budget <= 0) ? CARDS : CARDS.filter(c => c.price <= budget);
   if(!pool.length){ alert(`预算 ${budget} 元内没有可抽取的餐品。`); return; }
 
-  // 先算好结果并落库（避免演出中断导致数据丢失）
+  // 先把结果算出来但**不落库**，等每张卡演完再加入收藏册
   const drawn = [];
-  const known = new Set(led.collection.map(c => c.id));
   for(let i=0;i<n;i++){
     const c = drawOne(budget);
-    if(!c) continue;
-    const ex = led.collection.find(x => x.id === c.id);
-    if(ex){ ex.duplicate_count = (ex.duplicate_count || 1) + 1; c.duplicate_count = ex.duplicate_count; }
-    else{
-      c.duplicate_count = 1;
-      c.obtained_at = new Date().toLocaleString("zh-CN");
-      led.collection.push(JSON.parse(JSON.stringify(c)));
-    }
-    known.add(c.id);
-    drawnIds.add(c.id);
-    drawn.push(c);
+    if(c) drawn.push(c);
   }
-  led.points -= n * META.costPerDraw;
-  led.totalDraws += n;
+  if(!drawn.length){ alert("没有抽到卡片，请重试"); return; }
+
+  led.points -= drawn.length * META.costPerDraw;
+  led.totalDraws += drawn.length;
   save();
 
   busy = true;
@@ -1247,11 +1266,19 @@ async function doDraw(){
   // 演出排序：SSR 最后翻（压轴），UR 次之
   const order = {R:0, UR:1, SSR:2};
   const seq = drawn.slice().sort((a,b) => order[a.rarity] - order[b.rarity]);
+
   for(let i=0;i<seq.length;i++){
     // 非最后一张时禁用跳过，保证多抽的逐张节奏
     allowSkip = (i === seq.length - 1);
     await revealCard(seq[i]);
-    if(skipped){ skipped = false; break; }   // 跳过则直接进入结算
+    // ★ 这张演完了，才加入收藏册并保存
+    commitToCollection(seq[i]);
+    if(skipped){
+      // 跳过：把剩余未演出的卡一次性补录（数据不丢）
+      for(let j=i+1;j<seq.length;j++) commitToCollection(seq[j]);
+      skipped = false;
+      break;
+    }
   }
   closeStage();
   allowSkip = false;
@@ -1261,6 +1288,29 @@ async function doDraw(){
   // 新获得的卡在收藏册顶部，滚动到该处
   $("colBox").scrollIntoView({behavior:"smooth", block:"start"});
   setTimeout(() => { drawnIds.clear(); }, 4000);   // 4 秒后撤掉 NEW 标记
+}
+
+/* 单张卡演出完成后才写入收藏册（去重计数 + NEW 标记 + 持久化） */
+function commitToCollection(c){
+  const ex = led.collection.find(x => x.id === c.id);
+  if(ex){
+    ex.duplicate_count = (ex.duplicate_count || 1) + 1;
+    c.duplicate_count = ex.duplicate_count;
+  }else{
+    c.duplicate_count = 1;
+    c.obtained_at = new Date().toLocaleString("zh-CN");
+    led.collection.push(JSON.parse(JSON.stringify(c)));
+  }
+  drawnIds.add(c.id);
+  save();
+  renderAll();          // 立刻刷新卡册，让这张卡带着 NEW 出现
+  // 演出层内给出「已加入收藏册」的可视反馈
+  const sc = $("stageCollected");
+  if(sc){
+    sc.classList.remove("on");
+    void sc.offsetWidth;      // 强制重排以重启动画
+    sc.classList.add("on");
+  }
 }
 
 function showCard(c){
