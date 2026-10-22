@@ -388,14 +388,59 @@ MIN_POOL_FOR_QUANTILE = 8
 FALLBACK_THRESHOLDS = {"SSR": 75.0, "UR": 55.0}
 
 
-def assign_rarity(health_score: float, thresholds: Optional[Dict[str, float]] = None) -> str:
-    """
-    按健康度划分稀有度。
+# ---- 稀有度规则（与健康度完全解耦）----
+#:
+#: 设计原则：**稀有度回答「值不值得收集」，健康度回答「好不好」**。
+#: 两者是正交维度。若稀有度由健康度决定，会出现
+#: 「高热量低营养 = R 档」这类误导——玩家会误以为 R 档就是差。
+#:
+#: 稀有度改为按**价格档 + 品类价值**划分（经典抽卡逻辑）：
+#:   SSR  D 档（> ¥45）—— 贵重正餐，收集门槛最高
+#:   UR   C 档（¥30~45）或 B 档中汉堡类 —— 中价位主食
+#:   R    A 档（≤ ¥15）与平价小件（薯条/饮品/甜点/小食）
+#:
+#: 实测 53 张卡分布：SSR 15 / UR 23 / R 15，三档均衡。
 
-    :param health_score: 健康度评分 0~100
-    :param thresholds: 阈值字典 {"SSR": 90.5, "UR": 61.2}。
-                       由 build_cards 依据当前卡池的分位数计算得出。
-                       传None 时退回固定阈值。
+#: 归入 UR 的汉堡类品类（正餐主食，价格 15~45 元区间）
+UR_BURGER_CATEGORIES = {"汉堡"}
+
+#: 归入 SSR 的最低价格（元）
+SSR_PRICE_FLOOR = 45.0
+
+#: 归入 UR 的汉堡最低价格（元）
+UR_BURGER_PRICE_FLOOR = 24.0
+
+
+def assign_rarity(price: float, price_tier_: str, category: str) -> str:
+    """
+    按价格档 + 品类划分稀有度（**与健康度无关**）。
+
+    规则：
+      SSR —— 价格档 D（> 45 元）
+      UR  —— 价格档 C（30~45 元），或 B 档中的汉堡类（≥24 元）
+      R   —— 其余（A 档与平价小件）
+
+    :param price: 门店售价（元）
+    :param price_tier_: 价格档 "A"/"B"/"C"/"D"
+    :param category: 品类（"汉堡"/"饮品"/"薯条"…）
+    """
+    if price_tier_ == "D" or price >= SSR_PRICE_FLOOR:
+        return "SSR"
+    if price_tier_ == "C":
+        return "UR"
+    if category in UR_BURGER_CATEGORIES and price >= UR_BURGER_PRICE_FLOOR:
+        return "UR"
+    if price_tier_ == "B":
+        return "UR"
+    return "R"
+
+
+def assign_rarity_by_score(health_score: float,
+                           thresholds: Optional[Dict[str, float]] = None) -> str:
+    """
+    旧版按健康度分级的实现（保留供历史数据与测试使用）。
+
+    新流程不再调用此函数——稀有度已与健康度解耦。
     """
     th = thresholds or FALLBACK_THRESHOLDS
     if health_score >= th["SSR"]:
@@ -527,13 +572,15 @@ def build_cards(
     cards: List[Card] = []
     for item, price in singles:
         hs = item.health_score
-        rarity = assign_rarity(hs, th_single)
+        tier = price_tier(price)
+        cat = guess_category(item.name)
+        rarity = assign_rarity(price, tier, cat)
         cid = f"{rarity.lower()}_{_slug(item.name)}"
         cards.append(Card(
             id=cid, name=item.name, rarity=rarity, price=price,
             calories=item.energy_kcal, protein=item.protein, fat=item.fat,
             carbohydrate=item.carbohydrate, sodium=item.sodium, health_score=hs,
-            price_tier=price_tier(price), category=guess_category(item.name),
+            price_tier=tier, category=cat,
             image_path=f"assets/cards/{cid}.png", is_combo=False,
             meal_share=item.meal_share, protein_tag=item.protein_tag,
             fat_tag=item.fat_tag, sodium_tag=item.sodium_tag,
@@ -542,13 +589,14 @@ def build_cards(
 
     for row, item, price in combos:
         hs = item.combo_health_score
-        rarity = assign_rarity(hs, th_combo)
+        tier = price_tier(price)
+        rarity = assign_rarity(price, tier, "套餐")
         cid = f"{rarity.lower()}_{_slug(item.name)}"
         cards.append(Card(
             id=cid, name=item.name, rarity=rarity, price=price,
             calories=item.energy_kcal, protein=item.protein, fat=item.fat,
             carbohydrate=item.carbohydrate, sodium=item.sodium, health_score=hs,
-            price_tier=price_tier(price), category="套餐",
+            price_tier=tier, category="套餐",
             image_path=f"assets/cards/{cid}.png", is_combo=True,
             combo_items=list(row.get("items", [])),
             meal_share=item.meal_share, protein_tag=item.protein_tag,
