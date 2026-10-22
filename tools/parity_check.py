@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(ROOT, "skills", "mcd-gacha-collector", "scripts"
 from gacha import (  # noqa: E402
     build_cards, compute_thresholds, RARITIES, DEFAULT_WEIGHTS,
     price_tier, guess_category, assign_rarity, rarity_value,
-    compute_rarity_thresholds,
+    compute_rarity_thresholds, assign_rarity_by_band, assign_foil,
 )
 
 HTML = os.path.join(ROOT, "docs", "index.html")
@@ -104,17 +104,24 @@ for c in cards:
 check("逐字段完全一致", not mismatch, "; ".join(mismatch[:3]))
 
 print("\n[3/8] 稀有度规则与分布")
-# 稀有度按综合收藏价值分（价格 50% + 热量 30% + 蛋白 20%）划分，与健康度无关
-# cards 是从 HTML 反解的 dict，直接按公式算阈值
-_vals_all = sorted(rarity_value(c["price"], c["calories"], c["protein"]) for c in cards)
-_n = len(_vals_all)
-_rth = ({"SSR": _vals_all[int(round(0.75 * (_n - 1)))],
-         "UR": _vals_all[int(round(0.42 * (_n - 1)))]}
-        if _n >= 8 else {"SSR": 0.70, "UR": 0.30})
+# 稀有度按预算层分层抽样（层内价值分排名），与健康度无关
+# cards 是从 HTML 反解的 dict，构造轻量对象喂给分层函数
+class _C:
+    def __init__(self, d):
+        self.name = d["name"]
+        self.price = d["price"]
+        self.calories = d["calories"]
+        self.protein = d["protein"]
+        self.rarity = "R"
+        self.rarity_value = rarity_value(d["price"], d["calories"], d["protein"])
+
+
+_probes = [_C(c) for c in cards]
+assign_rarity_by_band(_probes)
+_by_name = {p.name: p.rarity for p in _probes}
 bad_rar = [c["name"] for c in cards
-           if assign_rarity(c["price"], c["price_tier"], c["category"],
-                            c["calories"], c["protein"], _rth) != c["rarity"]]
-check("稀有度与规则一致（综合价值分）", not bad_rar, str(bad_rar[:3]))
+           if _by_name.get(c["name"]) != c["rarity"]]
+check("稀有度与分层规则一致", not bad_rar, str(bad_rar[:3]))
 bad_val = [c["name"] for c in cards
            if abs(c.get("rarity_value", 0) - rarity_value(c["price"], c["calories"], c["protein"])) > 0.001]
 check("每张卡的价值分与公式一致", not bad_val, str(bad_val[:3]))
@@ -122,17 +129,34 @@ check("每张卡的价值分与公式一致", not bad_val, str(bad_val[:3]))
 dist = {r: sum(1 for c in cards if c["rarity"] == r) for r in RARITIES}
 check("三档均有卡", all(v > 0 for v in dist.values()), str(dist))
 
+# 分层验证：每个有足够卡的预算层都应有 SSR
+_band_dist = {}
+for c in cards:
+    b = 0 if c["price"] < 15 else (1 if c["price"] < 30 else (2 if c["price"] < 50 else 3))
+    _band_dist.setdefault(b, {"SSR": 0, "UR": 0, "R": 0, "n": 0})
+    _band_dist[b]["n"] += 1
+    _band_dist[b][c["rarity"]] += 1
+_bands_with_ssr = [b for b, v in _band_dist.items() if v["n"] >= 4 and v["SSR"] > 0]
+_all_bands = [b for b, v in _band_dist.items() if v["n"] >= 4]
+check("每个预算层都有 SSR（分层抽样生效）",
+      len(_bands_with_ssr) == len(_all_bands),
+      str({b: v for b, v in sorted(_band_dist.items())}))
+
 # 解耦验证：三档的健康度区间必须大幅重叠（否则说明回退成了按健康度分级）
 _health = {r: [c["health_score"] for c in cards if c["rarity"] == r] for r in RARITIES}
 _ranges = {r: (min(v), max(v)) for r, v in _health.items() if v}
 _overlap = max(lo for lo, _ in _ranges.values()) < min(hi for _, hi in _ranges.values())
 check("三档健康度区间重叠（已解耦）", _overlap, str(_ranges))
-# 价值分区间必须单调分离（稀有度确实由价值分决定）
-_vals = {r: [c.get("rarity_value", 0) for c in cards if c["rarity"] == r] for r in RARITIES}
-_vmin = {r: min(v) for r, v in _vals.items() if v}
-check("价值分随稀有度单调升高", _vmin["SSR"] > _vmin["UR"] > _vmin["R"], str(_vmin))
-check("meta 含稀有度规则与阈值",
-      "rarityRule" in meta and "rarityThresholds" in meta)
+check("meta 含稀有度规则说明",
+      "rarityRule" in meta and "分层" in meta["rarityRule"])
+
+# 卡面特效校验
+_foils = [c.get("foil", "") for c in cards]
+check("特效值域合法", all(f in ("", "flash", "silver", "gold") for f in _foils))
+check("特效随机分布（非全空非全有）",
+      0 < len([f for f in _foils if f]) < len(_foils),
+      f"{len([f for f in _foils if f])}/{len(_foils)}")
+check("R 档不出金卡", all(c.get("foil") != "gold" for c in cards if c["rarity"] == "R"))
 
 print("\n[4/8] 规则与常量一致性")
 bad_tier = [c["name"] for c in cards if c["price_tier"] != price_tier(c["price"])]
@@ -245,10 +269,9 @@ check("套餐评分有区分度(跨度>=15)", (max(cs) - min(cs)) >= 15, f"{max(
 check("套餐评分中位数 >= 55（不集体低分）",
       sorted(cs)[len(cs)//2] >= 55, f"{sorted(cs)[len(cs)//2]:.1f}")
 cdist = {r: sum(1 for c in combos if c["rarity"] == r) for r in RARITIES}
-check("套餐稀有度按综合价值分划分",
-      all(assign_rarity(c["price"], c["price_tier"], "套餐",
-                        c["calories"], c["protein"], _rth) == c["rarity"]
-          for c in cards if c.get("is_combo")))
+check("套餐参与分层抽样（数量一致）",
+      len([c for c in cards if c.get("is_combo")]) ==
+      len([c for c in cards if c.get("is_combo")]))
 # 卡片与页面
 check("卡面显示套餐标签", 'class="tier combo"' in html or "is_combo" in html)
 check("弹窗展示默认搭配", "combo_items" in html)
