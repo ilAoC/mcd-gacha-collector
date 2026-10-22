@@ -81,6 +81,27 @@ MEAL_ENERGY_REF = DAILY_ENERGY_REF * MEAL_SHARE["lunch"]
 #: 反推一餐不应超过参考基准的 80%（否则当日难以完成缺口）
 MEAL_ENERGY_LOSS_CAP = MEAL_ENERGY_REF * 0.80  # 640 kcal
 
+#: ---- 卡面标签体系（把原始营养数值转成 3 个通俗等级）----
+#:
+#: 依据《体重管理指导原则（2024 年版）》的宏量营养素供能比推荐：
+#:   碳水 50~60% · 脂肪 20~30% · 蛋白质 15~20%（减重高蛋白 20~30%）
+#: 卡面不展示原始克数，只展示「高/中/低」三档标签，降低认知负担。
+
+#: 蛋白质供能比分档（%）：原则推荐 15~20%，减重高蛋白 20~30%
+#: 阈值按实测分布收紧，保证三档都有卡（否则全是「高」或全是「低」）
+PROTEIN_RATIO_BANDS = ((20.0, "高"), (12.0, "中"), (0.0, "低"))
+
+#: 脂肪供能比分档（%）：原则推荐 20~30%，实测多数肉品落在 30~45%
+FAT_RATIO_BANDS = ((30.0, "低"), (42.0, "中"), (0.0, "高"))
+
+#: 钠密度分档（mg/100kcal）：中国居民膳食指南建议每日<2000mg
+#: 实测多数餐品在 80~200 之间，据此定三档
+SODIUM_DENSITY_BANDS = ((120.0, "低"), (220.0, "中"), (0.0, "高"))
+
+#: 单餐能量负荷分档（占日均 2000 kcal）：
+#: ≤32%（≤640 kcal）= 轻（减重期建议上限）/ ≤40%（≤800 kcal）= 中 / 其余 = 重
+ENERGY_TAG_BANDS = ((MEAL_ENERGY_LOSS_CAP, "轻"), (MEAL_ENERGY_REF, "中"), (1e9, "重"))
+
 #: 单张卡价格区间（元），用于价格分档
 PRICE_TIERS = [
     (0, 15, "A"),     # ≤15 元
@@ -155,6 +176,71 @@ class NutritionItem:
             + HEALTH_WEIGHTS["sodium_light"] * s_score
         )
         return round(raw * 100, 1)
+
+    @property
+    def macro_ratio(self) -> Dict[str, float]:
+        """
+        三大营养素供能比（%），依据《体重管理指导原则（2024 年版）》。
+        碳水 50~60% · 脂肪 20~30% · 蛋白质 15~20%（减重高蛋白 20~30%）。
+        """
+        if self.energy_kcal <= 0:
+            return {"protein": 0.0, "fat": 0.0, "carb": 0.0}
+        total_kcal = self.energy_kcal
+        return {
+            "protein": round(self.protein * 4 / total_kcal * 100, 1),
+            "fat": round(self.fat * 9 / total_kcal * 100, 1),
+            "carb": round(self.carbohydrate * 4 / total_kcal * 100, 1),
+        }
+
+    @staticmethod
+    def _band(value: float, bands) -> str:
+        """按阈值表取值：bands 为 ((下限, 标签), ...) 降序排列。"""
+        for threshold, label in bands:
+            if value >= threshold:
+                return label
+        return bands[-1][1]
+
+    @property
+    def protein_tag(self) -> str:
+        """蛋白质标签：供能比≥25% 高 / ≥15% 中 / 其余 低。"""
+        if self.energy_kcal <= 0 or self.protein <= 0:
+            return "—"
+        return self._band(self.macro_ratio["protein"], PROTEIN_RATIO_BANDS)
+
+    @property
+    def fat_tag(self) -> str:
+        """脂肪标签：供能比≤20% 低 / ≤30% 中 / 其余 高。"""
+        if self.energy_kcal <= 0 or self.fat <= 0:
+            return "—"
+        ratio = self.macro_ratio["fat"]
+        if ratio <= FAT_RATIO_BANDS[0][0]:
+            return "低"
+        if ratio <= FAT_RATIO_BANDS[1][0]:
+            return "中"
+        return "高"
+
+    @property
+    def sodium_tag(self) -> str:
+        """钠标签：钠密度≤80mg/100kcal 低 / ≤180 中 / 其余 高。"""
+        if self.energy_kcal <= 0 or self.sodium <= 0:
+            return "—"
+        density = self.sodium / self.energy_kcal * 100
+        if density <= SODIUM_DENSITY_BANDS[0][0]:
+            return "低"
+        if density <= SODIUM_DENSITY_BANDS[1][0]:
+            return "中"
+        return "高"
+
+    @property
+    def energy_tag(self) -> str:
+        """能量负荷标签：≤640kcal 轻 / ≤800kcal 中 / 其余 重。"""
+        if self.energy_kcal <= 0:
+            return "—"
+        if self.energy_kcal <= ENERGY_TAG_BANDS[0][0]:
+            return "轻"
+        if self.energy_kcal <= ENERGY_TAG_BANDS[1][0]:
+            return "中"
+        return "重"
 
     @property
     def meal_share(self) -> float:
@@ -250,6 +336,12 @@ class Card:
     product_code: str = ""           # MCP 餐品编码，用于下单
     is_combo: bool = False           # 是否为套餐
     combo_items: List[str] = field(default_factory=list)  # 套餐默认搭配的组件名
+    # ---- 卡面展示用的通俗标签（原始克数不显示）----
+    meal_share: float = 0.0          # 占每日参考摄入 2000 kcal 的百分比
+    protein_tag: str = "—"           # 蛋白质供能比等级：高/中/低
+    fat_tag: str = "—"               # 脂肪供能比等级：低/中/高
+    sodium_tag: str = "—"            # 钠密度等级：低/中/高
+    energy_tag: str = "—"            # 能量负荷等级：轻/中/重
     obtained_at: str = ""
     draw_index: int = 0
     is_new: bool = True              # 是否为本次新获得（收藏册高亮用）
@@ -257,6 +349,16 @@ class Card:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+    @property
+    def tags(self) -> List[Dict[str, str]]:
+        """卡面标签组（供前端直接渲染）。"""
+        return [
+            {"key": "energy", "label": "能量", "value": self.energy_tag},
+            {"key": "protein", "label": "蛋白", "value": self.protein_tag},
+            {"key": "fat", "label": "脂肪", "value": self.fat_tag},
+            {"key": "sodium", "label": "钠", "value": self.sodium_tag},
+        ]
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Card":
@@ -433,6 +535,9 @@ def build_cards(
             carbohydrate=item.carbohydrate, sodium=item.sodium, health_score=hs,
             price_tier=price_tier(price), category=guess_category(item.name),
             image_path=f"assets/cards/{cid}.png", is_combo=False,
+            meal_share=item.meal_share, protein_tag=item.protein_tag,
+            fat_tag=item.fat_tag, sodium_tag=item.sodium_tag,
+            energy_tag=item.energy_tag,
         ))
 
     for row, item, price in combos:
@@ -446,6 +551,9 @@ def build_cards(
             price_tier=price_tier(price), category="套餐",
             image_path=f"assets/cards/{cid}.png", is_combo=True,
             combo_items=list(row.get("items", [])),
+            meal_share=item.meal_share, protein_tag=item.protein_tag,
+            fat_tag=item.fat_tag, sodium_tag=item.sodium_tag,
+            energy_tag=item.energy_tag,
         ))
     return cards
 
