@@ -22,6 +22,7 @@ from gacha import (  # noqa: E402
     Card, GachaEngine, Ledger, NutritionItem, RARITIES, RECOVER_HOURS,
     COST_PER_DRAW, INITIAL_POINTS, assign_rarity, assign_rarity_by_score,
     rarity_value, compute_rarity_thresholds,
+    assign_rarity_by_band, assign_foil, _band_of, RARITY_BANDS, FOIL_TYPES, FOIL_ODDS,
     affordable_summary,
     build_cards, calorie_band, compute_thresholds, guess_category, price_tier,
     simulate_distribution, validate_pool, CST, MIN_POOL_FOR_QUANTILE,
@@ -111,6 +112,51 @@ check("兜底：价值 0.15→R", assign_rarity(10.0, "A", "饮品", 100, 2) == 
 # 分位数阈值模式
 check("自定义价值阈值→SSR", assign_rarity(50.0, "D", "套餐", 900, 30, {"SSR": 0.5, "UR": 0.2}) == "SSR")
 check("自定义价值阈值→UR", assign_rarity(30.0, "C", "汉堡", 500, 20, {"SSR": 0.5, "UR": 0.2}) == "UR")
+
+# --- 分层抽样：每层内都应有 SSR ---
+print("\n[2b/9] 分层抽样与卡面特效")
+_bh = {}
+for _p in (5.0, 10.0, 14.0, 18.0, 25.0, 35.0, 45.0, 55.0, 62.5):
+    _bh.setdefault(_band_of(_p), []).append(_p)
+check("预算层划分正确",
+      _band_of(5.0)==0 and _band_of(20.0)==1 and _band_of(40.0)==2 and _band_of(60.0)==3)
+
+# 构造一个每层都有 SSR 的小卡池
+def _mk(i, p0, d):
+    return Card(id="r_t%d" % i, name="T%d" % i, rarity="R",
+                price=p0 + d * i, calories=200 + d * i * 30, protein=5 + i * 3,
+                fat=10, carbohydrate=20, sodium=300, health_score=70,
+                price_tier="B", category="汉堡")
+
+_pool  = [_mk(i, 5.0, 0.6) for i in range(12)]           # 5.0~11.6  → ≤15 元层
+_pool += [_mk(100 + i, 16.0, 1.0) for i in range(12)]   # 16~27    → 15~30 元层
+_pool += [_mk(200 + i, 31.0, 2.0) for i in range(8)]    # 31~45    → 30~50 元层
+for _c in _pool: _c.rarity_value = rarity_value(_c.price, _c.calories, _c.protein)
+_th = assign_rarity_by_band(_pool)
+_by_band = {}
+for _c in _pool: _by_band.setdefault(_band_of(_c.price), []).append(_c.rarity)
+check("层内三档齐全（每层都有 SSR）",
+      all("SSR" in v for v in _by_band.values()), str(_by_band))
+# 每层内价值分最高的卡必须是 SSR
+_ok = True
+for _bi, _lst in _by_band.items():
+    _cards_in = [c for c in _pool if _band_of(c.price) == _bi]
+    _top = max(_cards_in, key=lambda c: c.rarity_value)
+    if _top.rarity != "SSR":
+        _ok = False
+check("层内价值分最高的卡必为 SSR", _ok)
+
+# 特效：确定性 + 概率递进
+assign_foil(_pool)
+check("特效字段已赋值", all(hasattr(c, "foil") for c in _pool))
+_f1 = [c.foil for c in _pool]
+assign_foil(_pool)
+check("特效分配确定性（两次调用一致）", [c.foil for c in _pool] == _f1)
+check("特效值域合法", all(f in FOIL_TYPES or f == "" for f in _f1))
+check("R 档不出金卡",
+      all(c.foil != "gold" for c in _pool if c.rarity == "R"))
+check("SSR 概率最高（金卡率 > R 档）",
+      FOIL_ODDS["SSR"].get("gold",0) > FOIL_ODDS["R"].get("gold",0))
 
 # 旧版按健康度分级的实现（保留兼容）
 th_custom = {"SSR": 65.0, "UR": 50.0}
@@ -212,10 +258,16 @@ check("最低价卡不是 SSR",
                    cards_by_price[0].protein) < rarity_value(cards_by_price[-1].price,
                    cards_by_price[-1].calories, cards_by_price[-1].protein))
 check("最低价卡是 A 档", cards_by_price[0].price_tier == "A")
-_rt = compute_rarity_thresholds(cards)
-check("稀有度由综合价值分决定（重算一致）",
-      all(assign_rarity(c.price, c.price_tier, c.category,
-                        c.calories, c.protein, _rt) == c.rarity for c in cards))
+_cards2 = [Card(id=c.id, name=c.name, rarity="R", price=c.price,
+                calories=c.calories, protein=c.protein, fat=c.fat,
+                carbohydrate=c.carbohydrate, sodium=c.sodium,
+                health_score=c.health_score, price_tier=c.price_tier,
+                category=c.category, is_combo=c.is_combo) for c in cards]
+for _c in _cards2:
+    _c.rarity_value = rarity_value(_c.price, _c.calories, _c.protein)
+assign_rarity_by_band(_cards2)
+check("稀有度由分层抽样决定（重算一致）",
+      all(a.rarity == b.rarity for a, b in zip(_cards2, cards)))
 check("价值分单调对应价格单调",
       cards_by_price[0].rarity_value <= cards_by_price[-1].rarity_value)
 
