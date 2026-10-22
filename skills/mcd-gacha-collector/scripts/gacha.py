@@ -44,18 +44,42 @@ RARITIES = ["SSR", "UR", "R"]
 DEFAULT_WEIGHTS = {"SSR": 5.0, "UR": 20.0, "R": 75.0}
 
 #: 健康度评分权重（用于稀有度划分与排序）
+#:
+#: 依据国家卫生健康委《体重管理指导原则（2024 年版）》：
+#:   - 「每日减少 500~1000 千卡或减少 30% 总能量摄入」→ 单餐热量应以
+#:     **每日推荐摄入的一餐占比**为基准（成年轻体力活动约 2000 kcal/日，
+#:     三餐按早 30% / 午 40% / 晚 30% 分配 → 午餐基准 800 kcal）
+#:   - 「碳水 50~60%、脂肪 20~30%、蛋白质 15~20%」→ 蛋白质供能比是
+#:     官方明确推荐区间，用蛋白密度衡量最贴近原则
+#:   - 「减少高糖、高油、高盐食物」→ 低钠单列一项
 HEALTH_WEIGHTS = {
-    "protein_density": 0.35,   # 蛋白质密度
-    "calorie_light": 0.40,     # 低热量
-    "sodium_light": 0.25,      # 低钠
+    "protein_density": 0.30,   # 蛋白质密度（对应供能比 15~20%）
+    "meal_share": 0.40,        # 单餐热量占每日推荐摄入比（核心新增维度）
+    "sodium_light": 0.30,      # 低钠
 }
 
 #: 套餐专用权重：看营养结构而非总量
 COMBO_WEIGHTS = {
-    "protein_density": 0.40,   # 每 100 大卡的蛋白质
-    "sodium_density": 0.35,    # 每 100 大卡的钠
-    "calorie_load": 0.25,      # 热量载荷（基准线提高到 700 大卡）
+    "protein_density": 0.35,   # 每 100 大卡的蛋白质
+    "sodium_density": 0.30,    # 每 100 大卡的钠
+    "calorie_load": 0.35,      # 热量载荷（基准线提高到 1000 大卡 = 一顿正餐）
 }
+
+#: ---- 体重管理参考常量（《体重管理指导原则（2024 年版）》推导）----
+#:
+#: 中国成年男性轻体力活动日总能量约 2250 kcal，女性约 1800 kcal；
+#: 取轻体力活动成年人日均 2000 kcal 作为参考基准。
+DAILY_ENERGY_REF = 2000.0
+
+#: 三餐能量分配：早 30% / 午 40% / 晚 30%（原则第 10 页「合理膳食」）
+MEAL_SHARE = {"breakfast": 0.30, "lunch": 0.40, "dinner": 0.30}
+
+#: 单餐热量基准（按午餐 40% 计）= 800 kcal
+MEAL_ENERGY_REF = DAILY_ENERGY_REF * MEAL_SHARE["lunch"]
+
+#: 减重期单餐建议上限：原则要求每日减 500~1000 kcal，
+#: 反推一餐不应超过参考基准的 80%（否则当日难以完成缺口）
+MEAL_ENERGY_LOSS_CAP = MEAL_ENERGY_REF * 0.80  # 640 kcal
 
 #: 单张卡价格区间（元），用于价格分档
 PRICE_TIERS = [
@@ -108,25 +132,52 @@ class NutritionItem:
     def health_score(self) -> float:
         """
         健康度评分 0~100。
-        蛋白质密度贡献 35%，低热量贡献 40%，低钠贡献 25%。
+        蛋白质密度 30% + 单餐能量占比 40% + 低钠 30%。
         评分只用于稀有度划分与展示，不代表任何医学建议。
+
+        评分基准来自《体重管理指导原则（2024 年版）》：
+          - 单餐能量基准 800 kcal（日均 2000 kcal × 午餐占比 40%）
+          - 减重期单餐上限 640 kcal（基准的 80%）
         """
-        # 蛋白质密度：每 100 大卡含多少克蛋白，上限 15g/100kcal 记满分
+        # 1) 蛋白质密度：每 100 大卡含多少克蛋白，上限 15g/100kcal 记满分
         protein_density = (self.protein / self.energy_kcal * 100) if self.energy_kcal > 0 else 0.0
         p_score = min(protein_density / 15.0, 1.0)
 
-        # 低热量：100 大卡以内满分，600 大卡以上 0 分
-        c_score = max(0.0, min(1.0, (600.0 - self.energy_kcal) / 500.0))
+        # 2) 单餐能量占比：以 800 kcal 为满分基准，超过 640 kcal 线性衰减到 0
+        c_score = self.meal_share_score()
 
-        # 低钠：钠含量 0 最优，2000mg 以上 0 分
+        # 3) 低钠：钠含量 0 最优，2000mg 以上 0 分
         s_score = max(0.0, min(1.0, (2000.0 - self.sodium) / 2000.0))
 
         raw = (
             HEALTH_WEIGHTS["protein_density"] * p_score
-            + HEALTH_WEIGHTS["calorie_light"] * c_score
+            + HEALTH_WEIGHTS["meal_share"] * c_score
             + HEALTH_WEIGHTS["sodium_light"] * s_score
         )
         return round(raw * 100, 1)
+
+    @property
+    def meal_share(self) -> float:
+        """单餐能量占每日参考摄入（2000 kcal）的百分比，如 28.6 表示 28.6%。"""
+        return round(self.energy_kcal / DAILY_ENERGY_REF * 100, 1)
+
+    def meal_share_score(self) -> float:
+        """
+        单餐能量占比得分 0~1。
+        ≤640 kcal（减重期建议上限）记满分，
+        800 kcal（一餐基准）记 0.5 分，
+        ≥1000 kcal 记 0 分。
+        """
+        kcal = self.energy_kcal
+        if kcal <= 0:
+            return 1.0  # 无热量数据（如水）不扣分
+        if kcal <= MEAL_ENERGY_LOSS_CAP:
+            return 1.0
+        if kcal >= MEAL_ENERGY_REF * 1.25:   # 1000 kcal
+            return 0.0
+        # 640~1000 之间线性衰减（1000 时为 0）
+        return max(0.0, (MEAL_ENERGY_REF * 1.25 - kcal) /
+                   (MEAL_ENERGY_REF * 1.25 - MEAL_ENERGY_LOSS_CAP))
 
     @property
     def combo_health_score(self) -> float:
@@ -137,14 +188,19 @@ class NutritionItem:
         总量大但**结构可控**（主食+小食+饮料的配比）。
         因此评分不看总量，而看两项结构指标：
 
-          1) 蛋白质密度（40%）：每100 大卡含多少克蛋白。
-             这是最能区分"营养配比"的指标——同样热量下蛋白越高越好。
+          1) 蛋白质密度（35%）：每 100 大卡含多少克蛋白。
+             对应原则「蛋白质供能 15~20%，减重期 20~30%」。
              套餐普遍含优质蛋白，因此分数不会天然偏低。
-          2) 钠密度（35%）：每 100 大卡含多少毫克钠。
-             套餐常搭配高钠小食与酱料，这一项能有效区分优劣。
-          3) 热量载荷（25%）：以 700 大卡为满分基准线向下衰减。
-             套餐总热量天然高于单品，故基准线提高到 700
-             （单品为 600），避免套餐被无谓扣分。
+          2) 钠密度（30%）：每 100 大卡含多少毫克钠。
+             对应原则「减少高盐食物」。
+          3) 热量载荷（35%）：以 1000 大卡为满分基准线向下衰减，
+             1200 大卡（占日均 60%）记 0 分。
+             套餐本身就是**一整顿**，需按整餐视角评估；
+             若沿用单品的 800 大卡基准，套餐会集体低分。
+
+        评分基准来自《体重管理指导原则（2024 年版）》：
+        日均约 2000 kcal，一餐基准 800 kcal（午餐占 40%），
+        减重期建议每日减 500~1000 kcal。
 
         该指标仅用于游戏化分级，不代表营养建议。
         """
@@ -162,8 +218,9 @@ class NutritionItem:
         s_density = self.sodium / self.energy_kcal * 100
         s_score = max(0.0, min(1.0, (200.0 - s_density) / 120.0))
 
-        # 热量载荷：700 大卡记满分，1500 大卡记 0 分
-        c_score = max(0.0, min(1.0, (1500.0 - self.energy_kcal) / 800.0))
+        # 热量载荷：1000 kcal 记满分（套餐=一整顿，按整餐基准评估），
+        # 1200 kcal（占日均 60%）记 0 分
+        c_score = max(0.0, min(1.0, (1200.0 - self.energy_kcal) / 200.0))
 
         raw = (
             COMBO_WEIGHTS["protein_density"] * p_score
