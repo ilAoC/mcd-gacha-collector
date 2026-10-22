@@ -306,7 +306,7 @@ body{
 .card:active{transform:scale(.975)}
 
 .card-in{
- position:relative;border-radius:14px;overflow:hidden;min-height:322px;
+ position:relative;border-radius:14px;overflow:hidden;min-height:348px;
  display:flex;flex-direction:column;
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 -30px 46px rgba(0,0,0,.42)}
 
@@ -316,7 +316,7 @@ body{
 .t-R  {--c1:var(--r-a);  --c2:var(--r-b); --c3:var(--r-c); --gl:rgba(90,169,240,.44)}
 
 /* --- 卡面图片区：主体，不被任何元素遮挡 --- */
-.art{position:relative;width:100%;height:158px;flex:none;overflow:hidden;
+.art{position:relative;width:100%;height:146px;flex:none;overflow:hidden;
  background:linear-gradient(155deg,var(--c3),#120704)}
 .art img{width:100%;height:100%;object-fit:cover;display:block;
  transition:transform .5s cubic-bezier(.34,1.3,.64,1)}
@@ -351,7 +351,8 @@ body{
 
 /* --- 卡名：压在图片下沿渐变上，不遮主体 --- */
 .cn{position:absolute;left:11px;right:11px;bottom:8px;z-index:5;
- font-size:15px;font-weight:900;line-height:1.26;color:#fff;letter-spacing:.3px;
+ font-size:14px;font-weight:900;line-height:1.24;color:#fff;letter-spacing:.2px;
+ white-space:normal;word-break:break-word;
  text-shadow:0 2px 6px rgba(0,0,0,.95),0 0 14px rgba(0,0,0,.75)}
 .cn .tier{display:inline-block;margin-left:5px;font-family:var(--f-lab);
  font-size:9.5px;font-weight:700;letter-spacing:.6px;
@@ -372,16 +373,32 @@ body{
 .price-unit{font-family:var(--f-lab);font-size:9.5px;color:var(--dim);font-weight:700;
  letter-spacing:.8px}
 
-/* 四项营养：2×2 网格 */
-.nutri{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.nu{background:rgba(0,0,0,.42);border-radius:9px;padding:6px 8px;
+/* 热量条：数值 + 进度条 + 占日比（替代原四项营养网格） */
+.kcal-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;
+ background:rgba(0,0,0,.42);border-radius:9px;padding:6px 9px;
  border:1px solid rgba(255,255,255,.07)}
-.nu .v{font-family:var(--f-num);font-size:13.5px;font-weight:900;line-height:1.15;
- display:flex;align-items:baseline;gap:2px;letter-spacing:.2px}
-.nu .u{font-family:var(--f-lab);font-size:9px;font-weight:700;opacity:.7;letter-spacing:.3px}
-.nu .k{font-size:9.5px;color:var(--dim);margin-top:2px;letter-spacing:.4px}
-.nu.kcal .v{color:#8FD3FF}.nu.protein .v{color:#8FE9A0}
-.nu.sodium .v{color:#FFAFA0}.nu.fat .v{color:#FFD08A}
+.kcal-v{font-family:var(--f-num);font-size:15px;font-weight:900;color:#8FD3FF;
+ line-height:1;letter-spacing:.2px;white-space:nowrap}
+.kcal-u{font-family:var(--f-lab);font-size:9px;font-weight:700;opacity:.65;
+ letter-spacing:.3px;margin-left:2px}
+.kcal-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
+.kcal-fill{height:100%;border-radius:3px;
+ background:linear-gradient(90deg,#5BC8FF,#8FD3FF);box-shadow:0 0 7px rgba(143,211,255,.55)}
+.kcal-pct{font-family:var(--f-lab);font-size:9.5px;font-weight:700;color:var(--dim);
+ letter-spacing:.3px;white-space:nowrap}
+
+/* 四个营养标签：能量 / 蛋白 / 脂肪 / 钠（2×2，卡面窄也能放下） */
+.tags{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.tagchip{display:flex;align-items:center;justify-content:center;gap:4px;
+ background:rgba(0,0,0,.42);border-radius:7px;padding:5px 4px;
+ border:1px solid rgba(255,255,255,.07);white-space:nowrap;min-width:0}
+.tagchip .tl{font-size:9px;color:var(--dim);letter-spacing:.3px;line-height:1;
+ flex-shrink:0}
+.tagchip .tv{font-family:var(--f-lab);font-size:12px;font-weight:700;line-height:1;
+ flex-shrink:0}
+.tagchip.lo .tv{color:#7FE0A0}
+.tagchip.mid .tv{color:#FFC72C}
+.tagchip.hi .tv{color:#FF8A76}
 
 /* ---- 健康度徽章：右上角，含迷你进度弧 ---- */
 .score{
@@ -807,16 +824,29 @@ function cardHtml(c, isNew, isLast, inStage){
       : `<span class="tier">${esc(c.category)}</span>`}</div>
     <div class="panel">
       <div class="price-row"><span class="price">¥${c.price.toFixed(2)}</span><span class="price-unit">门店价</span></div>
-      <div class="nutri">
-        <div class="nu kcal"><div class="v">${c.calories.toFixed(0)}<span class="u">kcal</span></div><div class="k">热量</div></div>
-        <div class="nu protein"><div class="v">${c.protein.toFixed(0)}<span class="u">g</span></div><div class="k">蛋白质</div></div>
-        <div class="nu fat"><div class="v">${c.fat.toFixed(0)}<span class="u">g</span></div><div class="k">脂肪</div></div>
-        <div class="nu sodium"><div class="v">${c.sodium.toFixed(0)}<span class="u">mg</span></div><div class="k">钠</div></div>
+      <div class="kcal-row">
+        <div class="kcal-v">${c.calories.toFixed(0)}<span class="kcal-u">kcal</span></div>
+        <div class="kcal-bar" title="占每日参考摄入 ${c.meal_share||(c.calories/20).toFixed(1)}%">
+          <div class="kcal-fill" style="width:${Math.min(100,(c.calories/1000)*100).toFixed(0)}%"></div>
+        </div>
+        <div class="kcal-pct">占日 ${(c.calories/20).toFixed(0)}%</div>
+      </div>
+      <div class="tags">
+        ${tagChip("能量", c.energy_tag)}
+        ${tagChip("蛋白", c.protein_tag)}
+        ${tagChip("脂肪", c.fat_tag)}
+        ${tagChip("钠", c.sodium_tag)}
       </div>
     </div>
     ${(isLast && c.duplicate_count > 1) ? `<div class="dup">×${c.duplicate_count}</div>` : ""}
   </div>
 </div>`;
+}
+
+function tagChip(label, val){
+  const v = val || "—";
+  const cls = v === "高" ? "hi" : (v === "低" ? "lo" : "mid");
+  return `<div class="tagchip ${cls}"><span class="tl">${label}</span><span class="tv">${esc(v)}</span></div>`;
 }
 
 function renderAll(){
@@ -1005,17 +1035,29 @@ function showCard(c){
     ? `<img class="mimg" src="${esc(c.image_url)}" alt="${esc(c.name)}"
          onerror="this.style.display='none'">` : "";
   $("mBody").innerHTML = img + `
+    <div class="tags" style="margin:10px 0 12px">
+      ${tagChip("能量", c.energy_tag)}
+      ${tagChip("蛋白", c.protein_tag)}
+      ${tagChip("脂肪", c.fat_tag)}
+      ${tagChip("钠", c.sodium_tag)}
+    </div>
     <div class="mrow"><span>价格</span><b style="color:var(--mcd-gold)">¥${c.price.toFixed(2)}</b></div>
-    <div class="mrow"><span>热量</span><b>${c.calories.toFixed(0)} kcal</b></div>
-    <div class="mrow"><span>蛋白质 / 脂肪 / 碳水</span><b>${c.protein.toFixed(0)} / ${c.fat.toFixed(0)} / ${c.carbohydrate.toFixed(0)} g</b></div>
-    <div class="mrow"><span>钠</span><b>${c.sodium.toFixed(0)} mg</b></div>
+    <div class="mrow"><span>热量</span><b>${c.calories.toFixed(0)} kcal<span style="font-size:11px;opacity:.7"> · 占日 ${(c.calories/20).toFixed(1)}%</span></b></div>
     <div class="mrow"><span>健康度评分</span><b style="color:var(--c2,#FFC72C)">${c.health_score.toFixed(1)}<span style="font-size:11px;opacity:.7"> / 100</span></b></div>
+    <div class="mrow" style="border-top:1px solid rgba(255,255,255,.08);padding-top:8px;margin-top:8px">
+      <span>详细营养</span><b style="font-size:11.5px;opacity:.85">
+        蛋白 ${c.protein.toFixed(0)}g · 脂肪 ${c.fat.toFixed(0)}g · 碳水 ${c.carbohydrate.toFixed(0)}g · 钠 ${c.sodium.toFixed(0)}mg</b></div>
     <div class="mrow"><span>品类 / 价格档</span><b>${esc(c.category)} · ${esc(c.price_tier)} 档</b></div>
     ${c.is_combo && (c.combo_items||[]).length ? `<div class="mrow"><span>默认搭配</span><b style="font-size:12px">${esc(c.combo_items.join(" + "))}</b></div>` : ""}
     <div class="mrow"><span>餐品编码</span><b>${esc(c.product_code || c.id)}</b></div>
     <div class="mnote">卡面数据来自麦当劳 MCP 实采（${esc(META.sampledAt)}）。<br>
-    ${c.is_combo ? "套餐营养为<b>默认搭配</b>的基准值，实际可替换小食与饮料，热量会随之变化；套餐评分按「每元营养密度」计算，与单品评分口径不同。<br>" : ""}
-    健康度评分仅供趣味参考，不构成营养建议。<br>
+    ${c.is_combo ? "套餐营养为<b>默认搭配</b>的基准值，实际可替换小食与饮料，热量会随之变化；套餐按<b>整餐视角</b>独立评分（满分基准 1000 kcal），与单品口径不同。<br>" : ""}
+    <b>四个标签的判定标准</b>（依据国家卫生健康委《体重管理指导原则（2024 年版）》）：<br>
+    能量：占每日 2000 kcal 的比例，≤640 kcal（32%）为「轻」· ≤800 kcal（40%）为「中」· 其余「重」<br>
+    蛋白：供能比 ≥20% 高 · ≥12% 中 · 其余低（原则推荐 15%~20%，减重期 20%~30%）<br>
+    脂肪：供能比 ≤30% 低 · ≤42% 中 · 其余高（原则推荐 20%~30%）<br>
+    钠：钠密度 ≤120mg/100kcal 低 · ≤220 中 · 其余高<br>
+    健康度 = 单餐能量占比 40% + 蛋白质密度 30% + 低钠 30%。评分仅供趣味参考，不构成营养建议。<br>
     下单价格以<b>你所在门店实时核价</b>为准，需先选择门店。</div>
     <div class="mnote" style="background:rgba(218,41,28,.06);border-left:3px solid #DA291C;padding:8px 10px;border-radius:6px;margin-top:8px;font-size:12px">
       💡 <b>网页可预览卡面</b>，但<b>真下单</b>需在对话里说：<code>买 ${esc(c.name)}</code><br>
@@ -1401,7 +1443,7 @@ if(location.search.includes("demo=1")){
 })();
 $("footer").innerHTML = `麦卡收藏家 · mcd-gacha-collector · 麦当劳程序员创意开发大赛参赛作品<br>
 数据来自麦当劳 MCP Server（open.mcd.cn），餐品价格与供应以官方渠道实时结果为准。<br>
-本页面为参赛作品，非麦当劳官方产品；健康度评分仅供趣味参考，不构成医疗或营养建议。<br>
+健康度评分参考国家卫生健康委《体重管理指导原则（2024 年版）》的摄入量标准设计，仅供趣味参考，不构成医疗或营养建议。<br>
 积分与收藏保存在浏览器本地，不消耗任何麦当劳官方积分。<br>
 <a href="https://github.com/M-China/mcd-developer-innovation-challenge" target="_blank" rel="noopener">麦当劳程序员创意开发大赛</a>`;
 </script>
