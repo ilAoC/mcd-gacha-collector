@@ -339,6 +339,7 @@ class Card:
     combo_items: List[str] = field(default_factory=list)  # 套餐默认搭配的组件名
     # ---- 卡面展示用的通俗标签（原始克数不显示）----
     foil: str = ""                    # 卡面特效：flash 闪卡 / silver 银碎 / gold 金卡（空=无）
+    is_variant: bool = False         # 是否为闪卡变体（独立卡项，非附加属性）
     rarity_value: float = 0.0        # 综合收藏价值分 0~1（决定稀有度，与健康度无关）
     meal_share: float = 0.0          # 占每日参考摄入 2000 kcal 的百分比
     protein_tag: str = "—"           # 蛋白质供能比等级：高/中/低
@@ -424,6 +425,11 @@ UR_BURGER_CATEGORIES = {"汉堡"}
 
 #: 最近一次 build_cards 使用的分层阈值（供 --inspect / gen_web_data 读取）
 LAST_BAND_THRESHOLDS: Dict[str, float] = {}
+
+#: 闪卡是**独立卡种**，不是附加属性：
+#: 抽到闪卡时额外多产出一张「闪卡版」（foil=flash + 变体标记），
+#: 与原卡并存、分别计入收藏册，凑齐时可集满「普通 + 闪卡」双份。
+VARIANT_SUFFIX = "_flash"
 
 #: 归入 SSR 的最低价格（元）
 SSR_PRICE_FLOOR = 45.0
@@ -737,6 +743,30 @@ def build_cards(
     LAST_BAND_THRESHOLDS.update(band_th)
     assign_foil(cards)
     return cards
+
+
+def expand_flash_variants(cards: List["Card"], ratio: float = 0.45) -> List["Card"]:
+    """
+    把一部分卡**复制成独立的闪卡卡项**（不是附加属性）。
+
+    闪卡是单独一张卡：有自己的 id（`<原id>_flash`）、自己的 foil 标记、
+    计入收藏册后可以「普通版 + 闪卡版」各收集一份。
+
+    :param ratio: 哪些稀有度的卡会被做成闪卡变体（默认 SSR 与 UR）
+    """
+    out: List["Card"] = []
+    for c in cards:
+        out.append(c)
+        if c.rarity in ("SSR", "UR") and _hash01(c.id, "flashvar") < ratio:
+            v = Card(**{k: (list(val) if isinstance(val, list) else val)
+                        for k, val in c.to_dict().items()})
+            v.id = c.id + VARIANT_SUFFIX
+            v.foil = "flash"
+            v.is_variant = True
+            # 变体卡有独立的卡面路径（共用同一张图源，但路径独立以便用户自制卡面）
+            v.image_path = f"assets/cards/{v.id}.png"
+            out.append(v)
+    return out
 
 
 # ---- 卡面特效（纯装饰，增加收集趣味，与稀有度无关）----
