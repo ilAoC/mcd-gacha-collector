@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -337,6 +338,7 @@ class Card:
     is_combo: bool = False           # 是否为套餐
     combo_items: List[str] = field(default_factory=list)  # 套餐默认搭配的组件名
     # ---- 卡面展示用的通俗标签（原始克数不显示）----
+    foil: str = ""                    # 卡面特效：flash 闪卡 / silver 银碎 / gold 金卡（空=无）
     rarity_value: float = 0.0        # 综合收藏价值分 0~1（决定稀有度，与健康度无关）
     meal_share: float = 0.0          # 占每日参考摄入 2000 kcal 的百分比
     protein_tag: str = "—"           # 蛋白质供能比等级：高/中/低
@@ -420,11 +422,70 @@ RARITY_TIERS = {"SSR": 0.75, "UR": 0.42}
 #: 归入 UR 的汉堡类品类（保留给旧数据兼容）
 UR_BURGER_CATEGORIES = {"汉堡"}
 
+#: 最近一次 build_cards 使用的分层阈值（供 --inspect / gen_web_data 读取）
+LAST_BAND_THRESHOLDS: Dict[str, float] = {}
+
 #: 归入 SSR 的最低价格（元）
 SSR_PRICE_FLOOR = 45.0
 
 #: 归入 UR 的汉堡最低价格（元）
 UR_BURGER_PRICE_FLOOR = 24.0
+
+
+#: 预算分层（用户可选的预算上限对应这些档）
+#:   ≤15 元 / 15~30 元 / 30~50 元 / >50 元（不限）
+#:
+#: **分层抽样**：每个预算层内部独立按价值分排名分配 SSR/UR/R，
+#: 而不是在全池统一排名。这样任何预算下都能抽到各档卡——
+#: 「15 元内也能抽到 SSR」是玩法的基础，不能因全池排名而落空。
+RARITY_BANDS = [(0.0, 15.0), (15.0, 30.0), (30.0, 50.0), (50.0, float("inf"))]
+
+#: 各预算层内的三档占比（分位切点）。层内卡数少时按比例回退。
+#:   SSR 取层内前 25%，UR 取 42%~75%，R 取后 25%
+RARITY_BAND_TIERS = {"SSR": 0.25, "UR": 0.58}
+
+#: 层内卡数少于该值时，不再细分三档（避免「1 张卡里塞 3 档」）
+MIN_CARDS_PER_BAND = 4
+
+
+def _band_of(price: float) -> int:
+    for i, (lo, hi) in enumerate(RARITY_BANDS):
+        if lo <= price < hi:
+            return i
+    return len(RARITY_BANDS) - 1
+
+
+def assign_rarity_by_band(cards: List["Card"]) -> Dict[str, float]:
+    """
+    分层抽样定稀有度：每个预算层内部独立按价值分切三档。
+
+    返回各档实际使用的价值分阈值（用于 --inspect 与前端展示）。
+
+    为什么不用全池排名：全池排名会让「15 元以内」永远抽不到 SSR
+    （该层价值分天然偏低），玩家选了 15 元预算就完全见不到高稀有度卡，
+    玩法体验断裂。分层后每个预算档内都有完整的三档层次。
+    """
+    thresholds: Dict[str, float] = {}
+    for bi in range(len(RARITY_BANDS)):
+        band_cards = [c for c in cards if _band_of(c.price) == bi]
+        if len(band_cards) < MIN_CARDS_PER_BAND:
+            continue
+        ordered = sorted(band_cards, key=lambda c: c.rarity_value, reverse=True)
+        n = len(ordered)
+        # 层内价值分：SSR 前 25%，UR 接下来 33%，R 后 42%
+        ssr_cut = ordered[max(0, int(n * RARITY_BAND_TIERS["SSR"]))].rarity_value
+        ur_cut = ordered[max(0, int(n * RARITY_BAND_TIERS["UR"]))].rarity_value
+        thresholds[f"band{bi}_SSR"] = round(ssr_cut, 4)
+        thresholds[f"band{bi}_UR"] = round(ur_cut, 4)
+
+        for c in ordered:
+            if c.rarity_value >= ssr_cut:
+                c.rarity = "SSR"
+            elif c.rarity_value >= ur_cut:
+                c.rarity = "UR"
+            else:
+                c.rarity = "R"
+    return thresholds
 
 
 def rarity_value(price: float, calories: float, protein: float) -> float:
@@ -665,15 +726,57 @@ def build_cards(
             energy_tag=item.energy_tag,
         ))
 
-    # 第二趟：按全池价值分位数定稀有度，回填 id / image_path
-    th_rar = compute_rarity_thresholds(cards)
+    # 第二趟：先算价值分，再按预算层分层抽样定稀有度
     for c in cards:
         c.rarity_value = rarity_value(c.price, c.calories, c.protein)
-        c.rarity = assign_rarity(c.price, c.price_tier, c.category,
-                                 c.calories, c.protein, th_rar)
+    band_th = assign_rarity_by_band(cards)
+    for c in cards:
         c.id = f"{c.rarity.lower()}_{c.id.lstrip('_')}"
         c.image_path = f"assets/cards/{c.id}.png"
+    LAST_BAND_THRESHOLDS.clear()
+    LAST_BAND_THRESHOLDS.update(band_th)
+    assign_foil(cards)
     return cards
+
+
+# ---- 卡面特效（纯装饰，增加收集趣味，与稀有度无关）----
+#:
+#: 三种特效：
+#:   flash  闪卡 —— 斜向彩虹流光，稀有度越高越容易出
+#:   silver 银碎 —— 细碎银色箔片，UR/SSR 常见
+#:   gold   金卡 —— 鎏金描边，金粉浮尘，最稀有
+#:
+#: 分配逻辑：**确定性伪随机**（按卡片 id 哈希），
+#: 保证同��张卡每次看到特效一致，重新载入不会闪烁变化。
+
+FOIL_TYPES = ["flash", "silver", "gold"]
+
+#: 各稀有度出现特效的概率（0 = 不会出现）
+FOIL_ODDS = {
+    "SSR": {"gold": 0.34, "silver": 0.30, "flash": 0.18},   # 合计 82%
+    "UR": {"silver": 0.22, "flash": 0.16, "gold": 0.05},    # 合计 43%
+    "R": {"flash": 0.10, "silver": 0.03, "gold": 0.0},       # 合计 13%
+}
+
+
+def _hash01(key: str, salt: str = "") -> float:
+    """把字符串映射到 [0, 1) 的确定性伪随机数（跨会话稳定）。"""
+    h = hashlib.md5((key + "|" + salt).encode("utf-8")).hexdigest()
+    return int(h[:8], 16) / 0xFFFFFFFF
+
+
+def assign_foil(cards: List["Card"]) -> None:
+    """按稀有度概率给每张卡分配一种卡面特效（确定性，可复现）。"""
+    for c in cards:
+        odds = FOIL_ODDS.get(c.rarity, {})
+        r = _hash01(c.id, "foil")
+        acc = 0.0
+        c.foil = ""
+        for kind in ("gold", "silver", "flash"):
+            acc += odds.get(kind, 0.0)
+            if r <= acc:
+                c.foil = kind
+                break
 
 
 def pool_thresholds(
