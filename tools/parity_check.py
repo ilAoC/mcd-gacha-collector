@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, "skills", "mcd-gacha-collector", "scripts"
 
 from gacha import (  # noqa: E402
     build_cards, compute_thresholds, RARITIES, DEFAULT_WEIGHTS,
-    price_tier, guess_category,
+    price_tier, guess_category, assign_rarity,
 )
 
 HTML = os.path.join(ROOT, "docs", "index.html")
@@ -92,17 +92,21 @@ for c in _single_cards:
             mismatch.append(f"{c['name']}.{f_}: {getattr(r, f_)} vs {c.get(f_)}")
 check("逐字段完全一致", not mismatch, "; ".join(mismatch[:3]))
 
-print("\n[3/8] 阈值与分布")
-th = compute_thresholds([c["health_score"] for c in _single_cards])
-check("单品 SSR 阈值一致", abs(th["SSR"] - meta["thresholds"]["SSR"]) < 0.05,
-      f"{th['SSR']:.2f} vs {meta['thresholds']['SSR']}")
-check("单品 UR 阈值一致", abs(th["UR"] - meta["thresholds"]["UR"]) < 0.05,
-      f"{th['UR']:.2f} vs {meta['thresholds']['UR']}")
+print("\n[3/8] 稀有度规则与分布")
+# 稀有度按价格档 + 品类划分，与健康度无关
+bad_rar = [c["name"] for c in cards
+           if assign_rarity(c["price"], c["price_tier"], c["category"]) != c["rarity"]]
+check("稀有度与规则一致（价格档+品类）", not bad_rar, str(bad_rar[:3]))
 
 dist = {r: sum(1 for c in cards if c["rarity"] == r) for r in RARITIES}
 check("三档均有卡", all(v > 0 for v in dist.values()), str(dist))
-check("SSR 占比 <= 15%", dist["SSR"] / len(cards) <= 0.15,
-      f"{dist['SSR'] / len(cards) * 100:.1f}%")
+# 解耦验证：三档的健康度区间必须大幅重叠
+_health = {r: [c["health_score"] for c in cards if c["rarity"] == r] for r in RARITIES}
+_ranges = {r: (min(v), max(v)) for r, v in _health.items() if v}
+_overlap = max(lo for lo, _ in _ranges.values()) < min(hi for _, hi in _ranges.values())
+check("三档健康度区间重叠（已解耦）", _overlap, str(_ranges))
+check("meta 含稀有度规则说明",
+      "rarityRule" in meta and "rarityNote" in meta)
 
 print("\n[4/8] 规则与常量一致性")
 bad_tier = [c["name"] for c in cards if c["price_tier"] != price_tier(c["price"])]
@@ -207,14 +211,17 @@ check("卡池含套餐", len(combos) > 0, f"{len(combos)}")
 check("套餐 category 统一为「套餐」", all(c["category"] == "套餐" for c in combos))
 check("套餐均记录组件", all(c.get("combo_items") for c in combos))
 check("单品均标记 is_combo=False", all(c.get("is_combo") is False for c in singles))
-check("套餐与单品阈值分开", "thresholdsCombo" in meta)
+check("稀有度规则统一（套餐与单品共用）",
+      "rarityRule" in meta and "价格档" in meta["rarityRule"])
 # 套餐评分不得因分量大而集体低分
 cs = [c["health_score"] for c in combos]
 check("套餐评分有区分度(跨度>=15)", (max(cs) - min(cs)) >= 15, f"{max(cs)-min(cs):.1f}")
 check("套餐评分中位数 >= 55（不集体低分）",
       sorted(cs)[len(cs)//2] >= 55, f"{sorted(cs)[len(cs)//2]:.1f}")
 cdist = {r: sum(1 for c in combos if c["rarity"] == r) for r in RARITIES}
-check("套餐三档齐全", all(cdist[r] > 0 for r in RARITIES), str(cdist))
+check("套餐稀有度按价格档划分",
+      all(assign_rarity(c["price"], c["price_tier"], "套餐") == c["rarity"]
+          for c in cards if c.get("is_combo")))
 # 卡片与页面
 check("卡面显示套餐标签", 'class="tier combo"' in html or "is_combo" in html)
 check("弹窗展示默认搭配", "combo_items" in html)
