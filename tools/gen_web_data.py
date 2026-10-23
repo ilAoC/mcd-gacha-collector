@@ -17,8 +17,10 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "..", "skills", "mcd-gacha-collector", "scripts"))
 from gacha import (build_cards, compute_thresholds, pool_thresholds, RARITIES,  # noqa: E402
-                  compute_rarity_thresholds, rarity_value, expand_flash_variants)
+                  compute_rarity_thresholds, rarity_value, expand_flash_variants,
+                  guess_category)
 from image_map import IMAGE_MAP  # noqa: E402
+from full_catalog import build_catalog  # noqa: E402
 from combo_data import build_combo_rows  # noqa: E402
 
 # ---- query-meals 实测价格（门店实时，元） ----
@@ -62,12 +64,42 @@ rows = [{"productName": n, "energyKcal": v[0], "protein": v[1], "fat": v[2],
         for n, v in NUT.items()]
 
 combos = build_combo_rows()
-cards = build_cards(rows, PRICES, combos)
+cards = build_cards(rows, PRICES, combos)  # 首次构建，后面会被全品类覆盖
 # 闪卡是独立卡项：一部分 SSR/UR 会额外产出一张闪卡版
 cards = expand_flash_variants(cards)
 th = pool_thresholds(rows, combos)
 
-# 注入 MCP 真实卡面图片与餐品编码
+# ---- 全品类卡池：以 list-nutrition-foods 全量 160 项为主数据源 ----
+# 门店菜单随时段变化（早餐档只有 86 项），公开网页需要稳定的全品类展示，
+# 因此以营养库全量 + 实测/建议价格构建，与时段无关。
+catalog, _missing = build_catalog()
+cat_by_name = {}
+for cat, items in catalog.items():
+    for it in items:
+        cat_by_name[it["name"]] = cat
+
+# 全量营养库条目（156 项）并入卡池
+pool_items = list(rows)
+for cat, items in catalog.items():
+    for it in items:
+        if it["name"] not in PRICES:
+            pool_items.append({
+                "productName": it["name"], "energyKcal": it["energyKcal"],
+                "protein": it["protein"], "fat": it["fat"],
+                "carbohydrate": it["carbohydrate"], "sodium": it["sodium"],
+                "calcium": it["calcium"], "energyKj": 0,
+            })
+
+full_prices = dict(PRICES)
+for cat, items in catalog.items():
+    for it in items:
+        if it["price"] > 0:
+            full_prices.setdefault(it["name"], it["price"])
+
+cards = build_cards(pool_items, full_prices, combos, category_map=cat_by_name)
+cards = expand_flash_variants(cards)
+
+# 注入品类与图片
 combo_by_name = {r["name"]: r for r in combos}
 with_img = 0
 for c in cards:
@@ -76,6 +108,7 @@ for c in cards:
         c.product_code = src.get("code", c.id)
         c.image_url = src.get("image_url", "")
     else:
+        c.category = cat_by_name.get(c.name, guess_category(c.name))
         hit = IMAGE_MAP.get(c.name)
         if hit:
             c.product_code = hit[0]
@@ -88,13 +121,17 @@ for c in cards:
 
 n_single = sum(1 for c in cards if not c.is_combo)
 n_combo = sum(1 for c in cards if c.is_combo)
+dist_cat = {}
+for c in cards:
+    if not c.is_combo:
+        dist_cat[c.category] = dist_cat.get(c.category, 0) + 1
 
 payload = {
     "meta": {
-        "store": "麦当劳沈阳站出发层餐厅",
-        "storeCode": "3230366",
-        "address": "胜利南街2号沈阳站候车室夹层10号商铺",
-        "sampledAt": "2026-10-20",
+        "store": "全品类卡池（麦当劳中国营养库全量）",
+        "storeCode": None,
+        "address": "数据来自麦当劳 MCP list-nutrition-foods 全量 160 项，与时段无关",
+        "sampledAt": "2026-10-23",
         # 稀有度规则：综合收藏价值分（价格 50% + 热量 30% + 蛋白 20%），与健康度无关
         "rarityRule": "综合收藏价值分 = 价格 50% + 热量载荷 30% + 蛋白含量 20%；"
                       "按预算层（≤15 / 15~30 / 30~50 / >50 元）分层抽样，层内前 25% → SSR",
@@ -109,6 +146,9 @@ payload = {
         "singleCount": n_single,
         "comboCount": n_combo,
         "comboNote": "套餐营养为默认搭配基准值，实际可替换小食/饮料",
+        "categoryCount": len(dist_cat),
+        "categoryDist": dist_cat,
+        "priceNote": "价格为门店实测或官方建议零售价，仅用于稀有度分层与展示；实际下单价以你所在门店实时核价为准",
     },
     "cards": [c.to_dict() for c in cards],
 }
