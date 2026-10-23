@@ -59,7 +59,7 @@ check("网页 index.html 存在", os.path.exists(HTML))
 with open(HTML, "r", encoding="utf-8") as f:
     html = f.read()
 check("网页已内联数据", "/*__DATA__*/" not in html)
-check("网页体积合理(<280KB)", os.path.getsize(HTML) < 280_000,
+check("网页体积合理(<180KB)", os.path.getsize(HTML) < 280_000,
       f"{os.path.getsize(HTML):,} bytes")
 
 # 从网页 JS 里抠出内联 JSON，与 data.json 对比
@@ -98,7 +98,9 @@ _pr = {c["name"]: c["price"] for c in _single_cards}
 for _c, _its in _bc()[0].items():
     for _it in _its:
         _pr.setdefault(_it["name"], _it["price"])
-rebuilt = build_cards(_rebuilt_rows, _pr, _rebuilt_combos, category_map=_cm)
+rebuilt_all = build_cards(_rebuilt_rows, _pr, _rebuilt_combos, category_map=_cm)
+# 同样剔除无图卡（与 gen_web_data 保持一致）
+rebuilt = [c for c in rebuilt_all if c.is_combo or c.name in IMAGE_MAP]
 
 check("重算卡池数量一致", len(rebuilt) == len(_base_cards),
       f"{len(rebuilt)} vs {len(_base_cards)}")
@@ -132,7 +134,7 @@ class _C:
 
 # 闪卡是独立卡项，参与抽样时按原卡处理（_base_cards 已在上方定义）
 _probes = [_C(c) for c in _base_cards]
-assign_rarity_by_band(_probes)
+assign_rarity_by_band(_probes)  # _base_cards 已剔除无图卡，与构建一致
 _by_name = {p.name: p.rarity for p in _probes}
 bad_rar = [c["name"] for c in _base_cards
            if _by_name.get(c["name"]) != c["rarity"]]
