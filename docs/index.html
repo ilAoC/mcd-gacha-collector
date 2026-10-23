@@ -340,7 +340,10 @@ body{
    **覆盖整张卡面**（不是只盖图片区），**不加任何描边**，
    全部用粒子 + 光效实现，保持通透不遮挡内容 */
 .foil{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;
- border-radius:14px}
+ border-radius:14px;
+ /* 独立合成层：避免 mix-blend-mode 与卡片背景反复重绘导致抖动 */
+ will-change:transform,opacity;transform:translateZ(0);
+ backface-visibility:hidden}
 
 /* --- 闪卡：整卡斜向彩虹流光（3 道光带同时扫过）--- */
 .foil-flash::before{
@@ -351,13 +354,15 @@ body{
    rgba(255,255,255,.58) 40%,rgba(200,150,255,.40) 45%,
    rgba(255,255,255,.50) 49%,rgba(255,210,130,.36) 54%,
    transparent 64%,transparent 100%);
- animation:foilSweep 2.4s cubic-bezier(.45,0,.35,1) infinite;
+ animation:foilSweep 6.5s cubic-bezier(.4,0,.25,1) infinite;
  mix-blend-mode:screen}
 @keyframes foilSweep{
- 0%{transform:translateX(-75%) skewX(-8deg);opacity:0}
- 10%{opacity:1}
- 82%{opacity:1}
- 100%{transform:translateX(75%) skewX(-8deg);opacity:0}}
+ 0%{transform:translateX(-78%) skewX(-8deg);opacity:0}
+ 30%{opacity:0}
+ 42%{opacity:.85}
+ 62%{opacity:.85}
+ 74%{opacity:0}
+ 100%{transform:translateX(78%) skewX(-8deg);opacity:0}}
 /* 第二道反向细光带，制造交错感 */
 .foil-flash::after{
  content:"";position:absolute;inset:-70% -30%;
@@ -365,13 +370,15 @@ body{
    transparent 0%,transparent 34%,
    rgba(255,255,255,.36) 42%,rgba(255,255,255,.50) 46%,
    rgba(160,240,255,.32) 50%,transparent 58%,transparent 100%);
- animation:foilSweep2 2.4s cubic-bezier(.45,0,.35,1) infinite;
+ animation:foilSweep2 6.5s cubic-bezier(.4,0,.25,1) infinite;
  mix-blend-mode:screen}
 @keyframes foilSweep2{
- 0%{transform:translateX(-85%) skewX(-8deg);opacity:0}
- 30%{opacity:1}
- 88%{opacity:1}
- 100%{transform:translateX(85%) skewX(-8deg);opacity:0}}
+ 0%{transform:translateX(-88%) skewX(-8deg);opacity:0}
+ 44%{opacity:0}
+ 55%{opacity:.7}
+ 70%{opacity:.7}
+ 80%{opacity:0}
+ 100%{transform:translateX(88%) skewX(-8deg);opacity:0}}
 /* 闪卡：整卡彩虹氛围光（不用描边） */
 .foil-halo.flash-glow{background:
   radial-gradient(ellipse 130% 55% at 50% 0%,rgba(160,220,255,.18),transparent 64%),
@@ -405,12 +412,15 @@ body{
  0%{background-position:0 0,20px 10px,40px 0,10px 20px,
               30px 5px,0 25px,15px 35px,35px 15px,
               5px 40px,25px 30px,45px 20px,20px 45px,
-              40px 35px,10px 50px; opacity:.52}
- 50%{opacity:.92}
+              40px 35px,10px 50px; opacity:.74}
+ 50%{background-position:9px -7px,13px 11px,29px 4px,17px 10px,
+              25px 8px,5px 18px,11px 26px,30px 11px,
+              10px 30px,20px 21px,40px 14px,25px 33px,
+              32px 27px,15px 40px; opacity:.86}
  100%{background-position:18px -14px,-14px 12px,-22px -8px,12px -20px,
               -20px -10px,16px -22px,-12px 8px,20px -16px,
               -8px -24px,14px -20px,-18px -6px,10px -26px,
-              -16px -20px,8px -30px; opacity:.52}}
+              -16px -20px,8px -30px; opacity:.74}}
 /* 银碎：整卡冷银氛围光（不用描边） */
 .foil-silver::after{
  content:"";position:absolute;inset:0;
@@ -418,7 +428,7 @@ body{
   radial-gradient(ellipse 120% 60% at 50% 0%,rgba(200,230,255,.20),transparent 62%),
   radial-gradient(ellipse 100% 50% at 50% 100%,rgba(150,190,225,.16),transparent 58%);
  mix-blend-mode:screen;animation:foilBreath 4.5s ease-in-out infinite}
-@keyframes foilBreath{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes foilBreath{0%,100%{opacity:.82}50%{opacity:1}}
 
 /* --- 金卡：整卡金粉粒子（14 颗）+ 鎏金光晕（不用描边）--- */
 .foil-gold::before{
@@ -463,7 +473,8 @@ body{
    transparent 180deg,rgba(255,196,80,.26) 220deg,transparent 270deg);
  -webkit-mask:radial-gradient(circle,transparent 34%,#000 52%,transparent 72%);
  mask:radial-gradient(circle,transparent 34%,#000 52%,transparent 72%);
- mix-blend-mode:screen;animation:haloSpin 9s linear infinite;z-index:1}
+ mix-blend-mode:screen;animation:haloSpin 9s linear infinite;z-index:1;
+ will-change:transform;transform:translateZ(0)}
 @keyframes haloSpin{to{transform:rotate(360deg)}}
 
 /* --- 银碎：中心冷光轮 --- */
@@ -499,6 +510,8 @@ body{
  .foil::before,.foil::after{animation:none!important}
  .foil-flash::before{opacity:.32}
  .foil-silver::before,.foil-gold::before{opacity:.7}
+ .foil-halo{animation:none!important}
+ .rar-tag,.score,.new{animation:none!important}
 }
 /* 无图餐品占位：按品类上色 + 大图标，避免大片空白 */
 .art .ph{position:absolute;inset:0;display:flex;flex-direction:column;
@@ -521,8 +534,8 @@ body{
 .rar-tag span{transform:skewX(9deg)}
 .card.t-SSR .rar-tag{animation:rarGlow 2.1s ease-in-out infinite}
 @keyframes rarGlow{
- 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 0 0 rgba(255,199,44,.55),inset 0 1px 0 rgba(255,255,255,.5)}
- 50%    {box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 18px 5px rgba(255,199,44,.42),inset 0 1px 0 rgba(255,255,255,.5)}
+ 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 6px 1px rgba(255,199,44,.34),inset 0 1px 0 rgba(255,255,255,.5)}
+ 50%    {box-shadow:0 3px 12px rgba(0,0,0,.5),0 0 10px 2px rgba(255,199,44,.44),inset 0 1px 0 rgba(255,255,255,.5)}
 }
 /* SSR额外角标光点 */
 .card.t-SSR .rar-tag::after{
@@ -601,8 +614,8 @@ body{
  color:var(--c1);margin-top:2px}
 .card.t-SSR .score{animation:scoreGlow 2.1s ease-in-out infinite}
 @keyframes scoreGlow{
- 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 14px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
- 50%    {box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 24px 6px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
+ 0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 8px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
+ 50%    {box-shadow:0 3px 12px rgba(0,0,0,.62),0 0 14px 3px var(--gl),inset 0 1px 4px rgba(0,0,0,.7)}
 }
 
 /* NEW 徽标：右上角分数下方，避免与分数徽章重叠 */
