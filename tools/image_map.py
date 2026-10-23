@@ -3,7 +3,8 @@
 """
 卡面图片映射：MCP query-meals 返回的 image 字段。
 
-数据来源：query-meals (storeCode=3230366, beType=1, orderType=1, 2026-10-20)
+数据来源：query-meals 多店实测（3230366 沈阳站 / 3230486 和平湾 / 3230221 国际软件园）
+           beType=1, orderType=1, 2026-10-20~23
 键为营养数据中的餐品名，值为 MCP 返回的图片 URL 与餐品编码。
 """
 import json
@@ -49,6 +50,36 @@ IMAGE_MAP = {
     "奥利奥麦旋风":      ("9900013732", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900013732_320.gif"),
     "朱古力新地":        ("9900008745", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900008745_320.gif"),
     "汉堡包":            ("9900008747", "https://menu-img.mcd.cn/pcm/prod/menu/20260309/product/MS_9900008747_320.gif"),
+"猪柳蛋麦满分": ("5022", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_5022_320.png"),
+    "猪柳麦满分": ("5024", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_5024_320.png"),
+    "火腿扒麦满分": ("1254", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_1254_320.png"),
+    "大脆鸡扒麦满分": ("5889", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_5889_320.png"),
+    "原味板烧鸡腿麦满分": ("6800", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_6800_320.png"),
+    "双层原味板烧鸡腿麦满分": ("4989", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_4989_320.png"),
+    "双层猪柳蛋麦满分": ("520830", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_520830_320.png"),
+    "吉士蛋麦满分": ("5888", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_5888_320.png"),
+    "猪柳炒双蛋堡": ("502773", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_502773_320.png"),
+    "原味板烧鸡腿炒双蛋堡": ("514700", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_514700_320.png"),
+    "火腿扒早安营养卷": ("513112", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_513112_320.png"),
+    "图林根香肠早安营养卷": ("513113", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_513113_320.png"),
+    "枫糖风味厚松饼猪柳堡": ("521990", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521990_320.png"),
+    "枫糖风味厚松饼猪柳蛋堡": ("521989", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521989_320.png"),
+    "芝芝火腿扒堡": ("521315", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521315_320.png"),
+    "脆香油条": ("2631", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_2631_320.png"),
+    "德式图林根香肠": ("505235", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_505235_320.png"),
+    "冰牛奶中杯": ("510041", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_510041_320.png"),
+    "优品豆浆": ("1088", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_1088_320.png"),
+    "麦咖啡™美式": ("507411", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_507411_320.png"),
+    "麦咖啡™奶铁": ("507409", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_507409_320.png"),
+    "燕麦奶铁": ("510479", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_510479_320.png"),
+    "麦咖啡™热美式中杯": ("507368", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_507368_320.png"),
+    "麦咖啡™热奶铁中杯": ("507328", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_507328_320.png"),
+    "卡布奇诺": ("507387", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_507387_320.png"),
+    "浓浓黑巧（冰/热）": ("515946", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_515946_320.png"),
+    "浓浓燕麦黑巧（冰/热）": ("515955", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_515955_320.png"),
+    "【美汁源】“黄金橙橙”": ("2430", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_2430_320.png"),
+    "【美汁源】“多汁柠柠”": ("521817", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521817_320.png"),
+    "经典麦旋风": ("9900013732", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900013732_320.png"),
 }
 
 if __name__ == "__main__":
