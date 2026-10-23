@@ -643,6 +643,7 @@ def build_cards(
     nutrition_rows: List[Dict[str, Any]],
     price_map: Optional[Dict[str, float]] = None,
     combo_rows: Optional[List[Dict[str, Any]]] = None,
+    category_map: Optional[Dict[str, str]] = None,
 ) -> List[Card]:
     """
     由 MCP 营养数据构建卡池（单品 + 套餐）。
@@ -703,7 +704,7 @@ def build_cards(
     for item, price in singles:
         hs = item.health_score
         tier = price_tier(price)
-        cat = guess_category(item.name)
+        cat = (category_map or {}).get(item.name) or guess_category(item.name)
         cid = f"_{_slug(item.name)}"  # 稀有度前缀稍后回填
         cards.append(Card(
             id=cid, name=item.name, rarity="R", price=price,
