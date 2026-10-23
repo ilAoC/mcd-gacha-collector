@@ -500,8 +500,14 @@ body{
  .foil-flash::before{opacity:.32}
  .foil-silver::before,.foil-gold::before{opacity:.7}
 }
-.art .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
- font-size:46px;z-index:2}
+/* 无图餐品占位：按品类上色 + 大图标，避免大片空白 */
+.art .ph{position:absolute;inset:0;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:6px;z-index:2;
+ background:radial-gradient(ellipse at 50% 38%,var(--c3) 0%,#0d0503 78%)}
+.art .ph .ph-ico{font-size:52px;line-height:1;
+ filter:drop-shadow(0 4px 14px rgba(0,0,0,.7));opacity:.92}
+.art .ph .ph-txt{font-family:var(--f-lab);font-size:9.5px;font-weight:700;
+ letter-spacing:2px;color:var(--dim);text-align:center;padding:0 10px}
 
 /* --- 稀有度角标：斜切横幅，醒目 --- */
 .rar-tag{
@@ -989,7 +995,16 @@ const RAR = {
   UR: {c1:"#FFD3E4", c2:"#FF5C9D", c3:"#B3155E"},
   R:  {c1:"#CFE4FF", c2:"#5AA9F0", c3:"#1B5FA8"}
 };
-const EMO = {"汉堡":"🍔","卷类":"🌯","小食":"🍟","薯条":"🍟","甜点":"🥧","甜品":"🍦","饮品":"🥤","饮料":"🥤","轻食":"🥗","早餐":"🍳","鸡肉":"🍗","套餐":"🍱"};
+/* 品类图标：覆盖全品类目录的 16 个品类（无图餐品用此占位） */
+const EMO = {
+  "牛堡":"🥩","鱼堡":"🐟","鸡堡":"🍗","吉士堡":"🧀","汉堡":"🍔",
+  "麦满分":"🥞","早餐堡":"🍳","营养卷粥":"🌯","早餐":"🍳",
+  "鸡肉小食":"🍗","风味脆汁鸡":"🍗","鸡肉":"🍗",
+  "薯条小食":"🍟","薯条":"🍟","小食":"🍟",
+  "甜品":"🍨","雪冰":"🥤","创意餐":"🧩",
+  "饮品":"🥤","饮料":"🥤","奶品":"🥛","咖啡":"☕","轻食":"🥗",
+  "卷类":"🌯","套餐":"🍱"
+};
 const $ = id => document.getElementById(id);
 
 /* ---------- 积分账本（网页版：不做时间恢复，改为手动刷新重置） ---------- */
@@ -1058,7 +1073,7 @@ function cardHtml(c, isNew, isLast, inStage){
   const click = inStage ? "" : ` onclick='showCard(${JSON.stringify(c).replace(/'/g,"&#39;")})'`;
   const art = c.image_url
     ? `<img src="${esc(c.image_url)}" alt="${esc(c.name)}" loading="lazy" onerror="this.parentNode.innerHTML='<div class=&quot;ph&quot;>${emoji}</div>'">`
-    : `<div class="ph">${emoji}</div>`;
+    : `<div class="ph"><div class="ph-ico">${emoji}</div><div class="ph-txt">${esc(c.category || "")}</div></div>`;
 
   const foil = c.foil || "";
   // 特效层覆盖**整张卡面**（.card-in 内），不加描边
@@ -1140,8 +1155,11 @@ function renderAll(){
   const canDraw = led.points >= 1;
   $("btnDraw").disabled = !canDraw;
   renderShelf();
+  const catLine = (META.categoryCount
+    ? ` · 覆盖 <b>${META.categoryCount}</b> 个品类（牛堡 / 鸡堡 / 麦满分 / 咖啡 / 饮品 …）`
+    : "");
   $("hint").innerHTML = canDraw
-    ? `卡池 <b>${CARDS.length}</b> 张 · 单品 ${META.singleCount} · 套餐 ${META.comboCount} · SSR <b>5%</b> / UR <b>20%</b> / R <b>75%</b>`
+    ? `全品类卡池 <b>${CARDS.length}</b> 张${catLine} · 套餐 ${META.comboCount} · SSR <b>5%</b> / UR <b>20%</b> / R <b>75%</b>`
     : `<span class="warn">积分不足</span> · 点击右上角「刷新积分」立即补满至 ${MAX_POINTS} 分`;
 }
 
@@ -1343,7 +1361,8 @@ function showCard(c){
           <div class="ng"><div class="ng-v">${c.sodium.toFixed(0)}<span>mg</span></div><div class="ng-k">钠</div></div>
         </div>
         <div class="mnote" style="margin:0">
-          数据来自麦当劳 MCP 实采（${esc(META.sampledAt)}）。<br>
+          数据来自麦当劳 MCP 全量营养库（${esc(META.sampledAt)} 采样，共 160 项）。<br>
+          ${META.priceNote ? esc(META.priceNote)+"<br>" : ""}
           ${c.is_combo ? "套餐营养为<b>默认搭配</b>基准值，可替换小食与饮料；套餐按<b>整餐视角</b>独立评分（基准 1000 kcal）。<br>" : ""}
           <b>标签判定标准</b>（依据国家卫健委《体重管理指导原则（2024 年版）》）：<br>
           能量 ≤640 kcal 轻 · ≤800 中 · 其余重<br>
@@ -1784,7 +1803,8 @@ if(location.search.includes("demo=1")){
   });
 })();
 $("footer").innerHTML = `麦卡收藏家 · mcd-gacha-collector · 麦当劳程序员创意开发大赛参赛作品<br>
-数据来自麦当劳 MCP Server（open.mcd.cn），餐品价格与供应以官方渠道实时结果为准。<br>
+数据来自麦当劳 MCP Server（open.mcd.cn）全量营养库，覆盖牛堡 / 鸡堡 / 麦满分 / 小食 / 甜品 / 饮品 / 咖啡等 ${META.categoryCount||16} 个品类，共 ${CARDS.length} 张卡。<br>
+餐品价格与供应以官方渠道实时结果为准。
 健康度评分参考国家卫生健康委《体重管理指导原则（2024 年版）》的摄入量标准设计，仅供趣味参考，不构成医疗或营养建议。<br>
 积分与收藏保存在浏览器本地，不消耗任何麦当劳官方积分。<br>
 <a href="https://github.com/M-China/mcd-developer-innovation-challenge" target="_blank" rel="noopener">麦当劳程序员创意开发大赛</a>`;
