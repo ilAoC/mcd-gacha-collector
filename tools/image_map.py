@@ -80,6 +80,12 @@ IMAGE_MAP = {
     "【美汁源】“黄金橙橙”": ("2430", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_2430_320.png"),
     "【美汁源】“多汁柠柠”": ("521817", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521817_320.png"),
     "经典麦旋风": ("9900013732", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_9900013732_320.png"),
+    "吉士汉堡包": ("9900005449", "https://menu-img.mcd.cn/pcm/prod/menu/20260824/product/MS_G504971_320.png"),
+    "高达吉士双牛堡": ("521316", "https://menu-img.mcd.cn/pcm/prod/menu/20260309/product/MS_521316_320.png"),
+    "浓缩咖啡": ("507389", "https://menu-img.mcd.cn/pcm/prod/menu/20250324/product/MS_507389_320.png"),
+    "阳光橙麦炫酷": ("6352", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_6352_320.png"),
+    "龙焰鸡腿堡": ("521952", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521952_320.png"),
+    "龙焰芝士棒鸡腿堡": ("521953", "https://menu-img.mcd.cn/pcm/prod/menu/ProductPool/product/MS_521953_320.png"),
 }
 
 if __name__ == "__main__":
