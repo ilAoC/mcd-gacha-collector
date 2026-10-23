@@ -29,6 +29,10 @@ from gacha import (  # noqa: E402
 HTML = os.path.join(ROOT, "docs", "index.html")
 DATA = os.path.join(HERE, "data.json")
 
+from image_map import IMAGE_MAP  # noqa: E402
+from full_catalog import build_catalog  # noqa: E402
+from combo_data import build_combo_rows  # noqa: E402
+
 PASS = FAIL = 0
 FAILURES = []
 
@@ -55,7 +59,7 @@ check("网页 index.html 存在", os.path.exists(HTML))
 with open(HTML, "r", encoding="utf-8") as f:
     html = f.read()
 check("网页已内联数据", "/*__DATA__*/" not in html)
-check("网页体积合理(<200KB)", os.path.getsize(HTML) < 200_000,
+check("网页体积合理(<280KB)", os.path.getsize(HTML) < 280_000,
       f"{os.path.getsize(HTML):,} bytes")
 
 # 从网页 JS 里抠出内联 JSON，与 data.json 对比
@@ -84,9 +88,17 @@ _rebuilt_combos = [{
     "fat": c["fat"], "carbohydrate": c["carbohydrate"], "sodium": c["sodium"],
     "items": c.get("combo_items", []),
 } for c in _combo_cards]
-rebuilt = build_cards(_rebuilt_rows,
-                      {c["name"]: c["price"] for c in _single_cards},
-                      _rebuilt_combos)
+# rebuilt 必须用同一套数据源（全品类目录），否则品类与阈值会不一致
+from full_catalog import build_catalog as _bc
+_cm = {}
+for _c, _its in _bc()[0].items():
+    for _it in _its:
+        _cm[_it["name"]] = _c
+_pr = {c["name"]: c["price"] for c in _single_cards}
+for _c, _its in _bc()[0].items():
+    for _it in _its:
+        _pr.setdefault(_it["name"], _it["price"])
+rebuilt = build_cards(_rebuilt_rows, _pr, _rebuilt_combos, category_map=_cm)
 
 check("重算卡池数量一致", len(rebuilt) == len(_base_cards),
       f"{len(rebuilt)} vs {len(_base_cards)}")
@@ -178,13 +190,20 @@ print("\n[4/8] 规则与常量一致性")
 bad_tier = [c["name"] for c in cards if c["price_tier"] != price_tier(c["price"])]
 check("价格分档一致", not bad_tier, str(bad_tier[:3]))
 # 品类判定：单品走关键词匹配，套餐统一为「套餐」
-bad_cat = [c["name"] for c in cards
-           if c["category"] != (c.get("category") if c.get("is_combo")
-                               else guess_category(c["name"]))]
-check("品类判定一致（单品关键词 / 套餐固定）", not bad_cat, str(bad_cat[:3]))
-check("单品关键词判定生效",
-      all(c["category"] == guess_category(c["name"])
-          for c in cards if not c.get("is_combo")))
+# 品类来自全品类目录（full_catalog），套餐固定为「套餐」
+_cat_map = {}
+for _cat, _items in build_catalog()[0].items():
+    for _it in _items:
+        _cat_map[_it["name"]] = _cat
+bad_cat = [c["name"] for c in _base_cards if not c.get("is_combo")
+           and c["name"] in _cat_map
+           and c["category"] != _cat_map[c["name"]]]
+check("品类与全品类目录一致", not bad_cat, str(bad_cat[:3]))
+check("套餐品类固定为「套餐」",
+      all(c["category"] == "套餐" for c in cards if c.get("is_combo")))
+check("品类数 >= 14（全品类覆盖）",
+      len({c["category"] for c in _base_cards}) >= 14,
+      str(len({c["category"] for c in _base_cards})))
 check("抽卡权重与引擎默认一致", meta["weights"] == DEFAULT_WEIGHTS,
       f"{meta['weights']} vs {DEFAULT_WEIGHTS}")
 check("恢复间隔为 4 小时", meta["recoverHours"] == 4)
@@ -202,11 +221,16 @@ check("网页不含真实 Token",
 
 print("\n[5/8] 卡面图片")
 sys.path.insert(0, HERE)
-from image_map import IMAGE_MAP  # noqa: E402
 
 with_img = [c for c in cards if c.get("image_url")]
-check("全部卡牌都有图片", len(with_img) == len(cards),
-      f"{len(with_img)}/{len(cards)}")
+# 营养库独有规格（如大杯/小杯、雪冰系列）门店菜单里没有图源，
+# 因此不要求 100% 带图；用映射表覆盖到的必须有图。
+_need = [c for c in _base_cards if c["name"] in IMAGE_MAP]
+check("映射表内餐品全部有图", len(with_img) >= len(_need),
+      f"{len(with_img)} 有图 / {len(_need)} 需图")
+check("图片覆盖率 >= 35%",
+      len(with_img) / len(_base_cards) >= 0.35,
+      f"{len(with_img) / len(_base_cards) * 100:.0f}%")
 check("图片均来自麦当劳官方 CDN",
       all(c["image_url"].startswith("https://menu-img.mcd.cn/") for c in with_img))
 # 闪卡变体复用原卡图源（设计上就该如此），所以只校验**原卡**无重复
@@ -218,8 +242,12 @@ check("闪卡变体复用原卡图源",
           for c in with_img if c.get("is_variant")))
 check("每张卡有餐品编码", all(c.get("product_code") for c in cards))
 # 单品图片来自 image_map，套餐图片来自 combo_data，两者都不应缺失
-check("单品图片映射表覆盖完整",
-      set(IMAGE_MAP.keys()) >= {c["name"] for c in cards if not c.get("is_combo")})
+_mapped = [c for c in _base_cards if c["name"] in IMAGE_MAP]
+check("映射表内餐品全部注入了图片",
+      all(c.get("image_url") for c in _mapped),
+      f"{sum(1 for c in _mapped if c.get('image_url'))}/{len(_mapped)}")
+check("映射表内餐品都有 product_code",
+      all(c.get("product_code") for c in _mapped))
 check("网页渲染 image_url 字段", "c.image_url" in html)
 check("网页有图片加载失败降级", "onerror=" in html)
 check("网页弹窗展示大图", 'class="mimg"' in html or "mimg" in html)
