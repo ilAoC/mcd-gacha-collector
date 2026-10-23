@@ -314,7 +314,7 @@ body{
 .card:active{transform:scale(.975)}
 
 .card-in{
- position:relative;border-radius:14px;overflow:hidden;min-height:348px;
+ position:relative;border-radius:14px;overflow:hidden;min-height:352px;
  display:flex;flex-direction:column;
  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 -30px 46px rgba(0,0,0,.42)}
 
@@ -324,7 +324,7 @@ body{
 .t-R  {--c1:var(--r-a);  --c2:var(--r-b); --c3:var(--r-c); --gl:rgba(90,169,240,.44)}
 
 /* --- 卡面图片区：主体，不被任何元素遮挡 --- */
-.art{position:relative;width:100%;height:186px;flex:none;overflow:hidden;
+.art{position:relative;width:100%;height:196px;flex:none;overflow:hidden;
  background:linear-gradient(155deg,var(--c3),#120704)}
 .art img{width:100%;height:100%;object-fit:cover;display:block;
  transition:transform .5s cubic-bezier(.34,1.3,.64,1)}
@@ -543,31 +543,25 @@ body{
  background:linear-gradient(180deg,rgba(18,7,4,.5),rgba(18,7,4,.9))}
 .price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:10px;
  white-space:nowrap;overflow:hidden}
-.price{font-family:var(--f-num);font-size:24px;font-weight:900;color:var(--mcd-gold);
- line-height:1;letter-spacing:.2px;text-shadow:0 0 18px rgba(255,199,44,.6);
+.price{font-family:var(--f-num);font-size:26px;font-weight:900;color:var(--mcd-gold);
+ line-height:1;letter-spacing:.2px;text-shadow:0 0 20px rgba(255,199,44,.65);
  flex-shrink:0}
-.price-unit{font-family:var(--f-lab);font-size:10px;color:var(--dim);font-weight:700;
- letter-spacing:.6px;flex-shrink:0}
-/* 健康度内联显示：与价格同行，避免底部堆叠 */
-.score-inline{margin-left:auto;display:inline-flex;align-items:baseline;gap:3px;
- font-family:var(--f-lab);font-size:10px;font-weight:700;letter-spacing:.3px;
- color:var(--dim);flex-shrink:0}
-.score-inline b{font-family:var(--f-num);font-size:16px;font-weight:900;
- color:var(--c2,#FFC72C);line-height:1;letter-spacing:0}
+.price-unit{font-family:var(--f-lab);font-size:10.5px;color:var(--dim);font-weight:700;
+ letter-spacing:1px;flex-shrink:0}
 
 /* 热量条：数值 + 进度条 + 占日比（替代原四项营养网格） */
-.kcal-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;
- background:rgba(0,0,0,.42);border-radius:9px;padding:6px 9px;
+.kcal-row{display:flex;align-items:center;gap:9px;
+ background:rgba(0,0,0,.42);border-radius:10px;padding:7px 11px;
  border:1px solid rgba(255,255,255,.07)}
-.kcal-v{font-family:var(--f-num);font-size:15px;font-weight:900;color:#8FD3FF;
- line-height:1;letter-spacing:.2px;white-space:nowrap}
-.kcal-u{font-family:var(--f-lab);font-size:9px;font-weight:700;opacity:.65;
+.kcal-v{font-family:var(--f-num);font-size:16px;font-weight:900;color:#8FD3FF;
+ line-height:1;letter-spacing:.2px;white-space:nowrap;flex-shrink:0}
+.kcal-u{font-family:var(--f-lab);font-size:9.5px;font-weight:700;opacity:.65;
  letter-spacing:.3px;margin-left:2px}
-.kcal-bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
+.kcal-bar{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden}
 .kcal-fill{height:100%;border-radius:3px;
- background:linear-gradient(90deg,#5BC8FF,#8FD3FF);box-shadow:0 0 7px rgba(143,211,255,.55)}
-.kcal-pct{font-family:var(--f-lab);font-size:9.5px;font-weight:700;color:var(--dim);
- letter-spacing:.3px;white-space:nowrap}
+ background:linear-gradient(90deg,#5BC8FF,#8FD3FF);box-shadow:0 0 8px rgba(143,211,255,.6)}
+.kcal-pct{font-family:var(--f-lab);font-size:10px;font-weight:700;color:var(--dim);
+ letter-spacing:.4px;white-space:nowrap;flex-shrink:0}
 
 /* 四个营养标签：能量 / 蛋白 / 脂肪 / 钠（2×2，卡面窄也能放下） */
 .tags{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
@@ -1090,7 +1084,6 @@ function cardHtml(c, isNew, isLast, inStage){
       <div class="price-row">
         <span class="price">¥${c.price.toFixed(2)}</span>
         <span class="price-unit">门店价</span>
-        <span class="score-inline">健康度<b>${c.health_score.toFixed(0)}</b></span>
       </div>
       <div class="kcal-row">
         <div class="kcal-v">${c.calories.toFixed(0)}<span class="kcal-u">kcal</span></div>
