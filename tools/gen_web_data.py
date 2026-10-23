@@ -96,8 +96,25 @@ for cat, items in catalog.items():
         if it["price"] > 0:
             full_prices.setdefault(it["name"], it["price"])
 
-cards = build_cards(pool_items, full_prices, combos, category_map=cat_by_name)
-cards = expand_flash_variants(cards)
+# ---- 先剔除无图卡，再构建卡池 ----
+# 顺序很关键：分层阈值依赖**全池价值分位数**，所以必须先把无图卡剔干净，
+# 否则阈值按「含无图卡的 171 张」算，与最终 73 张卡的池子对不上。
+# 营养库里有大量「同款换规格」条目（热/冰美式中杯/大杯/小杯、雪冰系列），
+# 官方菜单只上架其中一两个规格，其余没有对应图源；展示型卡池保留它们
+# 只会让页面出现大片空白占位，因此直接剔除。
+catalog_names = set(cat_by_name)
+pool_rows = []
+pool_prices = {}
+_dropped = []
+for it in pool_items:
+    nm = it["productName"]
+    if nm in catalog_names and nm not in IMAGE_MAP:
+        _dropped.append((nm, cat_by_name.get(nm, "其他")))
+        continue
+    pool_rows.append(it)
+
+cards = build_cards(pool_rows, full_prices, combos, category_map=cat_by_name)
+cards = expand_flash_variants(cards)  # 闪卡是独立卡项
 
 # 注入品类与图片
 combo_by_name = {r["name"]: r for r in combos}
@@ -146,6 +163,10 @@ payload = {
         "singleCount": n_single,
         "comboCount": n_combo,
         "comboNote": "套餐营养为默认搭配基准值，实际可替换小食/饮料",
+        "imageOnlyPool": True,
+        "droppedNoImage": len(_dropped),
+        "droppedByCategory": {k: sum(1 for _, c2 in _dropped if c2 == k)
+                             for k in sorted({c2 for _, c2 in _dropped})},
         "categoryCount": len(dist_cat),
         "categoryDist": dist_cat,
         "priceNote": "价格为门店实测或官方建议零售价，仅用于稀有度分层与展示；实际下单价以你所在门店实时核价为准",
@@ -159,4 +180,9 @@ with open(out, "w", encoding="utf-8") as f:
 
 dist = {r: sum(1 for c in cards if c.rarity == r) for r in RARITIES}
 print(f"卡池{len(cards)} 张  {dist}  阈值{th}")
+print(f"剔除无图卡 {len(_dropped)} 张 → 卡池剩 {len(pool_rows)} 项单品 + {len(combos)} 套餐")
+if _dropped:
+    from collections import Counter as _C
+    for _k, _v in _C(c2 for _, c2 in _dropped).most_common():
+        print(f"    {_k:10s} {_v} 张")
 print(f"已生成 {out} ({os.path.getsize(out)} bytes)")
