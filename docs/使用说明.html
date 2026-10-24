@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>麦卡收藏家 · 使用说明</title>
+<style>
+:root{
+  --bg:#120704; --bg2:#1c0b06; --panel:#251009;
+  --gold:#FFC72C; --gold2:#FFE9A8; --gold-dim:rgba(255,199,44,.22);
+  --text:#F2E4D2; --dim:#B99A80; --dim2:#8A6E58;
+  --green:#7FE0A0; --line:rgba(255,199,44,.16);
+  --f-num:"Bahnschrift","DIN Alternate","Arial Narrow",sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif;
+  line-height:1.75; -webkit-font-smoothing:antialiased;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%,rgba(120,40,15,.35),transparent 70%),
+    radial-gradient(ellipse 60% 40% at 85% 100%,rgba(90,60,20,.18),transparent 70%);
+}
+.wrap{max-width:940px;margin:0 auto;padding:0 26px 90px}
+
+/* ===== HERO ===== */
+.hero{padding:74px 0 54px;text-align:center;position:relative}
+.badge{display:inline-flex;align-items:center;gap:9px;
+ font-size:13px;font-weight:700;letter-spacing:3px;color:var(--gold);
+ padding:8px 20px;border:1px solid rgba(255,199,44,.42);border-radius:22px;
+ background:linear-gradient(180deg,rgba(255,199,44,.16),rgba(255,199,44,.04))}
+.hero h1{font-size:60px;font-weight:900;letter-spacing:7px;margin:26px 0 6px;
+ background:linear-gradient(176deg,#FFF6DC 5%,#FFD24A 34%,#FFB01F 58%,#FFE08A 78%,#D9860B);
+ -webkit-background-clip:text;background-clip:text;color:transparent;
+ -webkit-text-fill-color:transparent;filter:drop-shadow(0 5px 24px rgba(255,170,20,.45))}
+.hero-en{font-size:14px;font-weight:700;letter-spacing:8px;color:rgba(255,222,150,.55);margin-bottom:22px}
+.hero p{font-size:17px;color:var(--dim);max-width:560px;margin:0 auto}
+.hero-links{margin-top:26px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:7px;text-decoration:none;
+ font-size:14px;font-weight:700;letter-spacing:1px;padding:11px 22px;border-radius:10px;
+ border:1px solid var(--gold-dim);color:var(--gold2);
+ background:linear-gradient(180deg,rgba(255,199,44,.14),rgba(255,199,44,.04));
+ transition:.22s}
+.btn:hover{transform:translateY(-2px);border-color:rgba(255,199,44,.55);
+ box-shadow:0 8px 24px rgba(255,170,20,.24)}
+.btn.main{background:linear-gradient(120deg,#FFD24A,#FF9E0B);color:#2A1400;border-color:transparent;
+ box-shadow:0 6px 20px rgba(255,160,20,.35)}
+
+/* ===== TOC ===== */
+.toc{margin:0 0 54px;padding:26px 28px;border:1px solid var(--line);border-radius:16px;
+ background:linear-gradient(160deg,rgba(255,199,44,.06),rgba(255,255,255,.015))}
+.toc-h{font-size:13px;font-weight:700;letter-spacing:4px;color:var(--gold);margin-bottom:18px}
+.toc ol{list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:11px}
+.toc a{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--text);
+ font-size:14.5px;padding:9px 13px;border-radius:9px;transition:.2s;border:1px solid transparent}
+.toc a:hover{background:rgba(255,199,44,.10);border-color:var(--line)}
+.toc .n{width:24px;height:24px;flex:none;border-radius:7px;display:grid;place-items:center;
+ font-family:var(--f-num);font-size:12px;font-weight:700;color:var(--gold);
+ background:rgba(255,199,44,.14);border:1px solid rgba(255,199,44,.3)}
+
+/* ===== SECTION ===== */
+section{margin:0 0 60px;scroll-margin-top:20px}
+.sec-h{display:flex;align-items:center;gap:15px;margin-bottom:8px}
+.sec-n{font-family:var(--f-num);font-size:13px;font-weight:700;letter-spacing:2px;
+ color:var(--gold);padding:5px 12px;border-radius:7px;
+ background:rgba(255,199,44,.13);border:1px solid rgba(255,199,44,.3)}
+.sec-h h2{font-size:29px;font-weight:900;letter-spacing:2px}
+.sec-sub{color:var(--dim);font-size:15px;margin:0 0 26px 0;padding-left:0}
+h3{font-size:18.5px;font-weight:700;margin:32px 0 14px;color:var(--gold2);
+ display:flex;align-items:center;gap:10px}
+h3::before{content:"";width:4px;height:17px;border-radius:2px;
+ background:linear-gradient(180deg,#FFD24A,rgba(255,160,20,.2));flex:none}
+p{margin-bottom:14px;font-size:15.5px}
+b,strong{color:var(--gold2);font-weight:700}
+a{color:var(--gold);text-decoration:none;border-bottom:1px dashed rgba(255,199,44,.35)}
+code{font-family:"Cascadia Code","Consolas",monospace;font-size:13.5px;
+ background:rgba(0,0,0,.42);padding:2px 7px;border-radius:5px;color:#FFD98A;
+ border:1px solid rgba(255,199,44,.12)}
+
+/* ===== CODE ===== */
+pre{background:rgba(0,0,0,.5);border:1px solid var(--line);border-radius:12px;
+ padding:18px 20px;overflow-x:auto;margin:14px 0 18px}
+pre code{background:none;border:0;padding:0;font-size:13.5px;line-height:1.7;color:#E8DCC8}
+pre .cm{color:var(--dim2)}
+pre .kw{color:#FF9E6B}
+pre .st{color:var(--green)}
+
+/* ===== CARDS / CALLOUT ===== */
+.callout{border-radius:12px;padding:17px 20px;margin:18px 0;font-size:14.8px;
+ border-left:3px solid;position:relative}
+.callout .t{font-weight:700;margin-bottom:7px;letter-spacing:.5px}
+.co-tip{background:linear-gradient(90deg,rgba(255,199,44,.10),rgba(255,199,44,.02));
+ border-color:var(--gold);color:#F5E9D6}
+.co-warn{background:linear-gradient(90deg,rgba(255,120,60,.12),rgba(255,120,60,.02));
+ border-color:#FF8C42;color:#F7E3D2}
+.co-ok{background:linear-gradient(90deg,rgba(127,224,160,.11),rgba(127,224,160,.02));
+ border-color:var(--green);color:#E2F5E9}
+.co-danger{background:linear-gradient(90deg,rgba(255,80,80,.13),rgba(255,80,80,.02));
+ border-color:#FF6B6B;color:#F8DFDF}
+
+/* ===== TABLE ===== */
+table{width:100%;border-collapse:collapse;margin:16px 0 22px;font-size:14.5px;
+ border:1px solid var(--line);border-radius:11px;overflow:hidden}
+th{background:linear-gradient(180deg,rgba(255,199,44,.14),rgba(255,199,44,.05));
+ color:var(--gold2);font-weight:700;letter-spacing:1px;padding:12px 15px;text-align:left;
+ font-size:13.5px}
+td{padding:12px 15px;border-top:1px solid rgba(255,255,255,.06);vertical-align:top}
+tr:nth-child(even) td{background:rgba(255,255,255,.018)}
+td code{font-size:12.5px}
+
+/* ===== STEPS ===== */
+.steps{counter-reset:s;margin:16px 0 24px}
+.step{position:relative;padding:0 0 22px 46px;counter-increment:s}
+.step::before{content:counter(s);position:absolute;left:0;top:1px;
+ width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+ font-family:var(--f-num);font-size:14px;font-weight:700;color:#2A1400;
+ background:linear-gradient(120deg,#FFD24A,#FF9E0B);
+ box-shadow:0 3px 10px rgba(255,160,20,.32)}
+.step::after{content:"";position:absolute;left:14.5px;top:36px;bottom:0;width:1px;
+ background:linear-gradient(180deg,rgba(255,199,44,.34),rgba(255,199,44,.04))}
+.step:last-child::after{display:none}
+.step h4{font-size:16.5px;font-weight:700;margin-bottom:7px;color:var(--text)}
+.step p{font-size:14.8px;margin-bottom:9px}
+
+/* ===== CHAT MOCK ===== */
+.chat{margin:18px 0 24px;border:1px solid var(--line);border-radius:13px;overflow:hidden;
+ background:rgba(0,0,0,.24)}
+.chat .u{padding:12px 17px;font-size:14.8px;border-bottom:1px solid rgba(255,255,255,.05)}
+.chat .u b{color:#8FD3FF}
+.chat .a{padding:15px 17px;font-size:14.5px;white-space:pre-wrap;
+ font-family:"Cascadia Code","Consolas",monospace;line-height:1.72;color:#E8DCC8;
+ background:rgba(255,199,44,.035)}
+
+/* ===== FLOW ===== */
+.flow{margin:20px 0 26px;padding:20px 22px;border:1px solid var(--line);border-radius:13px;
+ background:linear-gradient(160deg,rgba(255,199,44,.05),rgba(255,255,255,.012));
+ font-size:14px;line-height:2.1;color:#E8DCC8;white-space:pre-wrap;
+ font-family:"Cascadia Code","Consolas",monospace;overflow-x:auto}
+
+/* ===== FAQ ===== */
+.faq{border:1px solid var(--line);border-radius:12px;margin-bottom:11px;overflow:hidden;
+ background:rgba(255,255,255,.02)}
+.faq summary{padding:15px 19px;font-weight:700;font-size:15.5px;cursor:pointer;
+ list-style:none;display:flex;align-items:center;gap:11px;transition:.2s}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";margin-left:auto;font-size:20px;color:var(--gold);
+ font-weight:400;transition:.22s;line-height:1}
+.faq[open] summary::after{content:"−";transform:rotate(180deg)}
+.faq summary:hover{background:rgba(255,199,44,.06)}
+.faq .body{padding:0 19px 17px;font-size:14.8px;border-top:1px solid rgba(255,255,255,.05);
+ padding-top:15px}
+
+/* ===== FOOT ===== */
+footer{margin-top:70px;padding-top:32px;border-top:1px solid var(--line);text-align:center}
+footer p{font-size:13.5px;color:var(--dim2);margin-bottom:7px}
+footer .c{font-size:13px;color:rgba(255,199,44,.6);letter-spacing:1px}
+
+@media (max-width:640px){
+  .wrap{padding:0 18px 60px}
+  .hero h1{font-size:40px;letter-spacing:4px}
+  .hero-en{font-size:11px;letter-spacing:5px}
+  .sec-h h2{font-size:23px}
+  .flow{font-size:12.5px;line-height:1.95}
+  table{font-size:13px}
+  th,td{padding:9px 11px}
+}
+</style></head><body>
+<div class="wrap">
+
+<div class="hero">
+  <span class="badge">🍟 从零开始 · 10 分钟上手</span>
+  <h1>麦卡收藏家</h1>
+  <div class="hero-en">MCD GACHA COLLECTOR · 使用说明</div>
+  <p>把整张菜单，变成可收集的卡牌。<br>从申请 Token 到成功点餐，五步走完。</p>
+  <div class="hero-links">
+    <a class="btn main" href="https://qingka-mp.app.workbuddy.host/" target="_blank">🎮 在线试玩（免安装）</a>
+    <a class="btn" href="https://github.com/ilAoC/mcd-gacha-collector" target="_blank">📦 GitHub 仓库</a>
+    <a class="btn" href="https://open.mcd.cn/mcp" target="_blank">🔑 申请 Token</a>
+  </div>
+</div>
+
+<div class="toc">
+  <div class="toc-h">📑 目录</div>
+  <ol>
+    <li><a href="#s1"><span class="n">1</span>申请 MCP Token</a></li>
+    <li><a href="#s2"><span class="n">2</span>配置 MCP 连接</a></li>
+    <li><a href="#s3"><span class="n">3</span>导入 Skill</a></li>
+    <li><a href="#s4"><span class="n">4</span>开始抽卡</a></li>
+    <li><a href="#s5"><span class="n">5</span>积分与点餐</a></li>
+    <li><a href="#faq"><span class="n">6</span>常见问题</a></li>
+    <li><a href="#fix"><span class="n">7</span>排障速查</a></li>
+  </ol>
+</div>
+
+<section id="s1">
+  <div class="sec-h"><span class="sec-n">STEP 1</span><h2>申请麦当劳 MCP Token</h2></div>
+  <p class="sec-sub">唯一需要手动操作的步骤，之后全自动。约 3 分钟。</p>
+
+  <div class="steps">
+    <div class="step">
+      <h4>打开开放平台</h4>
+      <p>访问 <a href="https://open.mcd.cn/mcp" target="_blank">open.mcd.cn/mcp</a></p>
+    </div>
+    <div class="step">
+      <h4>用手机号登录</h4>
+      <p>会收到验证码，直接输入即可。</p>
+    </div>
+    <div class="step">
+      <h4>激活并复制 Token</h4>
+      <p>进入「控制台」，找到 MCP 服务的<b>激活/授权</b>按钮。点激活后会显示一串形如
+        <code>ghp_xxxxxxxx</code> 的 Token，<b>只显示一次</b>，立刻点「复制」。</p>
+    </div>
+  </div>
+
+  <div class="callout co-tip">
+    <div class="t">💡 Token 是你的专属钥匙</div>
+    只存在你本机的 MCP 配置里。Skill 调用时是直接向 <code>mcp.mcd.cn</code> 发请求，
+    <b>不会上传、不会存储、不会转给任何人</b>。
+  </div>
+</section>
+
+<section id="s2">
+  <div class="sec-h"><span class="sec-n">STEP 2</span><h2>配置 MCP 连接</h2></div>
+  <p class="sec-sub">在 WorkBuddy 里填一次，之后永久有效。约 2 分钟。</p>
+
+  <div class="steps">
+    <div class="step">
+      <h4>打开连接器管理</h4>
+      <p>WorkBuddy 左侧边栏 → <b>【专家 · 技能 · 连接器】</b>（或点底部「＋」图标）
+        → 右上角 <b>【自定义连接器】</b> → <b>【配置 MCP】</b></p>
+    </div>
+    <div class="step">
+      <h4>粘贴配置（二选一）</h4>
+      <p>仓库里提供了现成的 <code>mcp-config.example.json</code>：</p>
+<pre><code><span class="cm">{
+  "mcpServers": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
+      "url": "https://mcp.mcd.cn",
+      "headers": {
+        "Authorization": "Bearer <span class="st">${MCD_MCP_TOKEN}</span>"
+      }
+    }
+  }
+}</span></code></pre>
+      <p><b>方式 A（新手推荐）</b>：把 <code>${MCD_MCP_TOKEN}</code> 直接替换成真实 Token</p>
+<pre><code><span class="cm">{
+  "mcpServers": {
+    "mcd-mcp": {
+      "type": "streamablehttp",
+      "url": "https://mcp.mcd.cn",
+      "headers": {
+        "Authorization": "Bearer <span class="st">ghp_你的真实Token</span>"
+      }
+    }
+  }
+}</span></code></pre>
+      <p><b>方式 B（更安全）</b>：保持 <code>${MCD_MCP_TOKEN}</code> 不变，用环境变量注入</p>
+<pre><code><span class="cm"># Windows PowerShell</span>
+[Environment]::SetEnvironmentVariable(<span class="st">"MCD_MCP_TOKEN"</span>, <span class="st">"ghp_你的真实Token"</span>, <span class="st">"User"</span>)
+
+<span class="cm"># macOS / Linux</span>
+export MCD_MCP_TOKEN=ghp_你的真实Token</code></pre>
+    </div>
+    <div class="step">
+      <h4>保存并启用</h4>
+      <p>点【保存】→ 点【启用】。环境变量方式需要<b>重启 WorkBuddy</b> 才生效。</p>
+    </div>
+    <div class="step">
+      <h4>验证连上了没</h4>
+      <p>在对话框输入 <code>现在几点？</code></p>
+      <p>能正常回答时间 = MCP 已连通 ✅<br>
+        报 401 = Token 错了或过期 → 回 Step 1 重来<br>
+        报「找不到 mcd 工具」= 配置没保存成功 → 检查 JSON 格式</p>
+    </div>
+  </div>
+</section>
+
+<section id="s3">
+  <div class="sec-h"><span class="sec-n">STEP 3</span><h2>导入 Skill</h2></div>
+  <p class="sec-sub">Skill = 让 AI 知道怎么玩这个游戏的操作手册 + 抽卡引擎。约 1 分钟。</p>
+
+  <div class="steps">
+    <div class="step">
+      <h4>克隆仓库</h4>
+<pre><code>git clone https://github.com/ilAoC/mcd-gacha-collector.git</code></pre>
+    </div>
+    <div class="step">
+      <h4>拷进 WorkBuddy 技能目录</h4>
+<pre><code><span class="cm"># Windows</span>
+xcopy /E /I /Y mcd-gacha-collector\skills\mcd-gacha-collector <span class="st">"%USERPROFILE%\.workbuddy\skills\"</span>
+
+<span class="cm"># macOS / Linux</span>
+cp -r mcd-gacha-collector/skills/mcd-gacha-collector ~/.workbuddy/skills/</code></pre>
+    </div>
+    <div class="step">
+      <h4>验证</h4>
+      <p>在对话框输入 <code>抽张麦当劳卡</code>，AI 开始问你位置 = 生效 ✅</p>
+    </div>
+  </div>
+
+  <div class="callout co-tip">
+    <div class="t">💡 偷懒办法</div>
+    直接在 WorkBuddy 对话框里说「找一下 mcd-gacha-collector 这个技能」，
+    让 AI 帮你完成安装。
+  </div>
+</section>
+
+<section id="s4">
+  <div class="sec-h"><span class="sec-n">STEP 4</span><h2>开始抽卡</h2></div>
+  <p class="sec-sub">Skill 会按顺序带你走完三阶段，全程自动引导。</p>
+
+  <div class="flow">🅰️ 阶段 A · 接入检查   检查 MCP，没配就给申请指引
+        ↓
+🅱️ 阶段 B · 门店定位   问你在哪 → 列出最近门店让你挑
+        ↓
+🅲 阶段 C · 抽卡确认   确认范围与次数 → 开抽</div>
+
+  <h3>实际对话长这样</h3>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>抽卡</div>
+    <div class="a">📍 你在哪个位置？
+我需要找到离你最近的麦当劳，才能给你准确的价格。
+回我一句话就行，比如「北京市朝阳区朝阳站」或「沈阳国际软件园」</div>
+  </div>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>沈阳国际软件园</div>
+    <div class="a">🏪 附近有 5 家麦当劳：
+┌──────────────────────────────────────┐
+│ 🚗 12 米     麦当劳沈阳国际软件园餐厅      │
+│ 🚗 780 米    麦当劳白塔河二路环球港动感城  │
+│ 🚗 2.4 公里  麦当劳全运路万达餐厅         │
+└──────────────────────────────────────┘
+回复数字选一家👆</div>
+  </div>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>第一个</div>
+    <div class="a">🎴 开抽前确认两件事👇
+
+┌─ ① 抽卡范围 ─────────────────────┐
+│ 💰 不限 / ≤30元 / ≤50元 / ≤100元    │
+└───────────────────────────────────┘
+┌─ ② 抽几张 ───────────────────────┐
+│ 🎴 单抽×1 / 五连×5 / 十连×10       │
+└───────────────────────────────────┘</div>
+  </div>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>≤50 元 · 十连</div>
+    <div class="a">🎯 收到：≤50 元 · 十连 ×10
+正在为你构建卡池…
+（逐张翻牌演出 → 给出结果 → 问你「要买哪一张？」）</div>
+  </div>
+
+  <h3>快捷指令</h3>
+  <table>
+    <tr><th style="width:34%">你说什么</th><th>AI 会做什么</th></tr>
+    <tr><td><code>抽卡</code></td><td>走完整三阶段引导</td></tr>
+    <tr><td><code>50元内十连</code></td><td>参数齐了，直接开抽</td></tr>
+    <tr><td><code>换个城市</code></td><td>重新定位门店</td></tr>
+    <tr><td><code>我的收藏册</code></td><td>列出已收集的卡</td></tr>
+    <tr><td><code>再来五张</code></td><td>继续抽（会先确认范围）</td></tr>
+    <tr><td><code>买不素之霸三件套</code></td><td>走下单流程</td></tr>
+  </table>
+</section>
+
+<section id="s5">
+  <div class="sec-h"><span class="sec-n">STEP 5</span><h2>积分与点餐下单</h2></div>
+  <p class="sec-sub">两套积分系统 + 五步点餐流程。</p>
+
+  <h3>💰 积分：两套系统，别搞混</h3>
+  <table>
+    <tr><th></th><th>Skill 对话端</th><th>网页端</th></tr>
+    <tr><td>初始积分</td><td><b>5 分</b></td><td><b>5 分</b></td></tr>
+    <tr><td>每次抽卡消耗</td><td>1 分</td><td>1 分</td></tr>
+    <tr><td>积分上限</td><td>5 分</td><td><b>30 分</b></td></tr>
+    <tr><td>恢复方式</td><td>⏰ 每 <b>4 小时</b>自动恢复 1 分</td><td>🔄 点「刷新积分」<b>立即补满 30 分</b>（60 秒冷却）</td></tr>
+    <tr><td>存储位置</td><td><code>tmp/ledger.json</code></td><td>浏览器 localStorage</td></tr>
+  </table>
+
+  <h3>怎么看剩余积分</h3>
+  <p><b>网页端</b>（最直观）：打开
+    <a href="https://qingka-mp.app.workbuddy.host/" target="_blank">在线版</a>
+    → 右上角的积分数字</p>
+  <p><b>Skill 对话端</b>：直接问它「我还剩多少积分？」，
+    它会告诉你当前积分和下次恢复时间。</p>
+
+  <div class="callout co-warn">
+    <div class="t">⚠️ 积分是这个游戏自己设计的玩法机制</div>
+    跟麦当劳官方积分账户<b>毫无关系</b>，不消耗也不影响你的真实积分。
+  </div>
+
+  <h3>🛒 点餐下单</h3>
+  <div class="flow">你：买不素之霸双层牛堡三件套
+  ↓
+AI：调 query-meals 拿该门店实时在售与编码
+  ↓
+AI：调 calculate-price 核价（含优惠 / 配送费）
+  ↓
+AI：复述「餐品 + 门店 + 总价」⏸ 等你确认
+  ↓
+你：确认下单
+  ↓
+AI：调 create-order → 返回 orderId + 支付链接
+  ↓
+你：点链接付款 ✅</div>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>买可乐</div>
+    <div class="a">🧾 订单确认
+┌──────────────────────────────────┐
+│  🥤 可乐 ×1              │
+│     ¥9.50               │
+│──────────────────────────────────│
+│  商品原价      ¥9.50      │
+│  优惠           -¥0.00     │
+│  打包费/餐具费   ¥0.00      │
+│──────────────────────────────────│
+│  💰 应付合计   ¥9.50     │
+└──────────────────────────────────┘
+
+📍 麦当劳沈阳国际软件园餐厅
+🍽️ 堂食（店内用餐）
+
+⏸ 确认下单吗？回复「确认下单」我就创建订单</div>
+  </div>
+
+  <div class="chat">
+    <div class="u"><b>你：</b>确认下单</div>
+    <div class="a">✅ 订单已创建
+订单号：1234567890
+💳 支付链接：https://...</div>
+  </div>
+
+  <h3>⚠️ 安全机制</h3>
+  <table>
+    <tr><th style="width:28%">规则</th><th>说明</th></tr>
+    <tr><td>必须先核价</td><td>AI 一定先调 <code>calculate-price</code>，把总价（含优惠、配送费）念给你听</td></tr>
+    <tr><td>必须你点头</td><td>只有你明确说「确认下单 / 买 / 就这个」，才会真正创建订单</td></tr>
+    <tr><td>不会乱下单</td><td>你只是问「多少钱」「看看」时，AI <b>绝不会</b>创建订单</td></tr>
+    <tr><td>取餐方式要选</td><td>核价时会问你「堂食」还是「外带（取餐柜）」</td></tr>
+  </table>
+
+  <h3>下单常见问题</h3>
+  <div class="faq"><summary>AI 说「这个商品该门店没在售」</summary>
+    <div class="body">门店菜单随时段变（早上早餐档、午晚正餐档）。换个时段再来，或换一家门店。</div></div>
+  <div class="faq"><summary>点餐时提示要 beCode</summary>
+    <div class="body">选「得来速（车道取餐）」时会需要。先用「到店自取」定位门店即可绕过。</div></div>
+  <div class="faq"><summary>能不能一次买好几张卡里的东西</summary>
+    <div class="body">可以。跟 AI 说「巨无霸三件套和麦辣鸡腿堡三件套都买」，AI 会一起核价给你确认。</div></div>
+  <div class="faq"><summary>价格和网页上不一样</summary>
+    <div class="body">正常。网页是<b>展示用参考价</b>，Skill 端是<b>你所在门店的实时核价</b>，后者才是真实应付金额。</div></div>
+</section>
+
+<section id="faq">
+  <div class="sec-h"><span class="sec-n">FAQ</span><h2>常见问题</h2></div>
+
+  <div class="faq"><summary>一定要装 Skill 吗？</summary>
+    <div class="body">网页端不用，直接开在线版就能玩。<b>但要「AI 帮你点餐」就必须装</b>——点餐靠 Skill 里的引导流程和强制二次确认机制。</div></div>
+
+  <div class="faq"><summary>Token 会被上传吗？</summary>
+    <div class="body">不会。Token 只写在你本机的 MCP 配置里，AI 调用时直接向 <code>mcp.mcd.cn</code> 发请求。</div></div>
+
+  <div class="faq"><summary>抽到的卡能直接买吗？</summary>
+    <div class="body">能，这就是核心玩法——卡上带 <code>product_code</code>，下单时 AI 直接用门店编码下单，不用手输。</div></div>
+
+  <div class="faq"><summary>卡池有多少张？</summary>
+    <div class="body">
+      <b>网页端</b>：96 张（73 张原卡 + 23 张独立闪卡变体），覆盖 13 个品类，100% 官方卡图<br>
+      <b>Skill 对话端</b>：按你所在门店的实时菜单构建（30~90 张），时段不同数量不同，但价格准
+    </div></div>
+
+  <div class="faq"><summary>稀有度怎么算的？</summary>
+    <div class="body"><b>分层抽样</b>：按价格分四层（≤15 / 15~30 / 30~50 / &gt;50 元），
+      每层内部按「价格 50% + 热量 30% + 蛋白 20%」的价值分排序，前 25% 为 SSR。
+      所以<b>每个价格档里都有 SSR</b>——15 元预算也能抽到金卡。</div></div>
+
+  <div class="faq"><summary>什么是金卡 / 银碎 / 闪卡？</summary>
+    <div class="body">纯装饰的卡面特效，与稀有度和健康度都无关：<br><br>
+      <b>👑 金卡</b> 满卡鎏金粒子 + 金色光轮 —— SSR 34% / UR 5% / R 0%<br>
+      <b>🥈 银碎</b> 银色箔片 + 冷光轮 —— SSR 30% / UR 22% / R 3%<br>
+      <b>✨ 闪卡</b> 彩虹流光扫过 —— 独立卡项，SSR/UR 约 45% 有闪卡版
+    </div></div>
+
+  <div class="faq"><summary>健康度和稀有度是一回事吗？</summary>
+    <div class="body"><b>不是，正交的两个维度。</b><br>
+      健康度回答「好不好」（依据《体重管理指导原则 2024》），稀有度回答「值不值得收集」。
+      贵的不一定健康，健康的不一定稀有。</div></div>
+
+  <div class="faq"><summary>忘记 Token 了 / 换了设备</summary>
+    <div class="body">回 Step 1 重新激活，重新填一次配置即可。</div></div>
+
+  <div class="faq"><summary>想换城市玩</summary>
+    <div class="body">直接说「换个城市」或「换家店」，Skill 会重新走阶段 B。</div></div>
+</section>
+
+<section id="fix">
+  <div class="sec-h"><span class="sec-n">FIX</span><h2>排障速查表</h2></div>
+  <table>
+    <tr><th style="width:32%">症状</th><th style="width:28%">原因</th><th>解决</th></tr>
+    <tr><td>AI 说「找不到 mcd 工具」</td><td>MCP 没配好或没启用</td><td>回 Step 2，检查 JSON + 点【启用】</td></tr>
+    <tr><td>调用报 401 unauthorized</td><td>Token 错误 / 过期</td><td>重新激活并替换配置</td></tr>
+    <tr><td>AI 不问参数就抽了</td><td>旧版 Skill</td><td>重新拷一次（Step 3），确保覆盖原目录</td></tr>
+    <tr><td>抽卡说「该门店没在售」</td><td>时段问题</td><td>等到午餐档，或换门店</td></tr>
+    <tr><td>网页打不开卡图</td><td>网络 / CDN</td><td>图片来自 <code>menu-img.mcd.cn</code>，检查网络</td></tr>
+    <tr><td>积分 0 且刷不出来</td><td>Skill 端靠时间恢复</td><td>用网页端（点刷新），或等 4 小时</td></tr>
+  </table>
+
+  <div class="callout co-ok">
+    <div class="t">📎 附：项目资料</div>
+    在线试玩 <a href="https://qingka-mp.app.workbuddy.host/" target="_blank">qingka-mp.app.workbuddy.host</a> ·
+    GitHub <a href="https://github.com/ilAoC/mcd-gacha-collector" target="_blank">ilAoC/mcd-gacha-collector</a> ·
+    MCP 平台 <a href="https://open.mcd.cn/mcp" target="_blank">open.mcd.cn/mcp</a> ·
+    配置样例 <code>mcp-config.example.json</code>
+  </div>
+</section>
+
+<footer>
+  <p class="c">🍟 麦卡收藏家 · MCD GACHA COLLECTOR</p>
+  <p>把整张菜单，变成可收集的卡牌</p>
+  <p>© 2026 陈曦（个人开发者）· 保留所有权利</p>
+</footer>
+
+</div></body></html>
