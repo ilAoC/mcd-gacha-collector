@@ -24,6 +24,7 @@ import threading
 import time
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mcd_client import McdClient, McdError  # noqa: E402
@@ -378,7 +379,8 @@ class Handler(BaseHTTPRequestHandler):
     # ---------- 静态文件 ----------
 
     def _serve_static(self, path):
-        rel = path.lstrip("/") or "index.html"
+        # URL 解码：支持中文文件名（如「使用说明.html」）
+        rel = unquote(path.lstrip("/")) or "index.html"
         # 防目录穿越
         target = os.path.normpath(os.path.join(WEB_ROOT, rel))
         if not target.startswith(os.path.normpath(WEB_ROOT)):
