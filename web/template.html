@@ -568,6 +568,16 @@ body{
 .price-unit{font-family:var(--f-lab);font-size:10.5px;color:var(--dim);font-weight:700;
  letter-spacing:1px;flex-shrink:0}
 
+/* 首屏入口按钮 */
+.hero-links{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.hlink{display:inline-flex;align-items:center;gap:6px;text-decoration:none;
+ font-family:var(--f-lab);font-size:12px;font-weight:700;letter-spacing:.8px;
+ color:#FFD9A0;padding:7px 15px;border-radius:16px;
+ border:1px solid rgba(255,199,44,.34);background:rgba(255,199,44,.09);
+ transition:.2s;backdrop-filter:blur(3px)}
+.hlink:hover{background:rgba(255,199,44,.2);border-color:rgba(255,199,44,.62);
+ color:#FFF0C8;transform:translateY(-1px)}
+
 /* 热量条：数值 + 进度条 + 占日比（替代原四项营养网格） */
 .kcal-row{display:flex;align-items:center;gap:9px;
  background:rgba(0,0,0,.42);border-radius:10px;padding:7px 11px;
@@ -864,6 +874,10 @@ footer a{color:var(--mcd-gold);text-decoration:none}
     <h1>麦卡收藏家</h1>
     <div class="hero-en">MCD GACHA COLLECTOR</div>
     <p class="hero-slogan">每一张卡，都是一份营养档案</p>
+    <div class="hero-links">
+      <a class="hlink" href="使用说明.html" target="_blank">📖 使用说明</a>      <a class="hlink" href="https://github.com/ilAoC/mcd-gacha-collector" target="_blank">📦 GitHub</a>
+      <a class="hlink" href="https://open.mcd.cn/mcp" target="_blank">🔑 接入 MCP</a>
+    </div>
     <div class="store-tag" id="storeTag">📍 点击选择你附近的麦当劳</div>
   </div>
 </header>
