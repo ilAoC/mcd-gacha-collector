@@ -15,6 +15,15 @@
 
 ---
 
+## 📖 使用说明
+
+完整的新手手册（申请 Token → 配置 MCP → 导入 Skill → 抽卡 → 积分 → 点餐下单）：
+
+- **网页版**：[docs/使用说明.html](docs/使用说明.html)
+- **Markdown**：[docs/使用说明.md](docs/使用说明.md)
+
+---
+
 ## 🌐 在线试玩（无需安装）
 
 ### 👉 <https://qingka-mp.app.workbuddy.host/>
