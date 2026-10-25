@@ -568,6 +568,54 @@ body{
 .price-unit{font-family:var(--f-lab);font-size:10.5px;color:var(--dim);font-weight:700;
  letter-spacing:1px;flex-shrink:0}
 
+/* ===== 演示模式提示条 ===== */
+.demo-bar{position:sticky;top:0;z-index:120;display:none;
+ align-items:center;gap:12px;padding:11px 20px;
+ background:linear-gradient(90deg,rgba(255,199,44,.20),rgba(255,138,66,.14));
+ border-bottom:1px solid rgba(255,199,44,.42);
+ backdrop-filter:blur(8px);position:relative}
+.demo-bar.on{display:flex}
+.demo-bar .db-ico{font-size:17px;flex:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+.demo-bar .db-txt{flex:1;font-size:13.5px;line-height:1.55;color:#FFF0D2}
+.demo-bar .db-txt b{color:var(--mcd-gold);font-weight:800}
+.demo-bar .db-x{flex:none;width:26px;height:26px;border-radius:8px;cursor:pointer;
+ border:1px solid rgba(255,199,44,.34);background:rgba(0,0,0,.28);color:#FFD98A;
+ font-size:15px;line-height:1;display:grid;place-items:center;transition:.2s}
+.demo-bar .db-x:hover{background:rgba(255,199,44,.22)}
+
+/* 演示模式下的置灰处理 */
+body.demo-mode .store-tag{opacity:.62;cursor:not-allowed}
+body.demo-mode .store-tag:hover{border-color:rgba(255,255,255,.12)}
+.demo-lock{display:none;align-items:center;gap:8px;margin:16px 0 0;padding:12px 16px;
+ border:1px dashed rgba(255,199,44,.34);border-radius:12px;background:rgba(255,199,44,.06);
+ font-size:13.5px;color:#F0DFC4;line-height:1.65}
+body.demo-mode .demo-lock{display:flex}
+.demo-lock .dl-ico{font-size:19px;flex:none}
+.demo-lock b{color:var(--mcd-gold);font-weight:800}
+
+@media (max-width:600px){
+  .demo-bar{padding:9px 14px}
+  .demo-bar .db-txt{font-size:12.5px}
+}
+
+/* 演示模式说明弹窗 */
+.demo-sheet{text-align:center;padding:6px 4px 2px}
+.ds-ico{font-size:46px;line-height:1;margin-bottom:12px;
+ filter:drop-shadow(0 4px 16px rgba(255,170,20,.42))}
+.demo-sheet h3{font-size:22px;font-weight:800;letter-spacing:1px;color:#FFD24A;margin-bottom:12px}
+.ds-txt{font-size:14.5px;line-height:1.78;color:#EADCC6;margin-bottom:20px;
+ padding:14px 16px;border-radius:11px;text-align:left;
+ background:rgba(0,0,0,.32);border:1px solid rgba(255,199,44,.2)}
+.ds-tips{display:flex;flex-direction:column;gap:9px;margin-bottom:20px;text-align:left}
+.ds-tip{display:flex;align-items:flex-start;gap:11px;font-size:13.5px;line-height:1.62;
+ color:#D8C7B0;padding:10px 13px;border-radius:9px;
+ background:rgba(255,199,44,.05);border:1px solid rgba(255,199,44,.13)}
+.ds-tip span:first-child{font-size:16px;flex:none;line-height:1.35}
+.ds-tip b{color:var(--mcd-gold);font-weight:800}
+.ds-tip a{color:var(--mcd-gold);text-decoration:underline;
+ text-underline-offset:3px;border-bottom:0}
+.demo-sheet .sbtn{margin-top:9px}
+
 /* 首屏入口按钮 */
 .hero-links{display:flex;gap:9px;justify-content:center;flex-wrap:wrap;margin-top:16px}
 .hlink{display:inline-flex;align-items:center;gap:6px;text-decoration:none;
@@ -865,6 +913,17 @@ footer a{color:var(--mcd-gold);text-decoration:none}
     </linearGradient>
   </defs>
 </svg>
+
+<!-- ===== 演示模式提示条 ===== -->
+<div class="demo-bar" id="demoBar">
+  <span class="db-ico">🎬</span>
+  <span class="db-txt">
+    <b>功能展示版</b> —— 本页用于演示抽卡玩法与卡面视觉，
+    <b>不提供门店定位与实际点餐</b>。想真正抽卡并下单，请在 WorkBuddy 中安装 Skill。
+  </span>
+  <span class="db-x" id="demoBarX" title="关闭提示">×</span>
+</div>
+
 <div class="wrap">
 <header class="hero">
   <div class="hero-bg" id="heroBg"></div>
@@ -923,6 +982,24 @@ footer a{color:var(--mcd-gold);text-decoration:none}
 <div class="mask" id="maskOrder">
   <div class="sheet">
     <div id="orderBody"></div>
+  </div>
+</div>
+
+<!-- ============ 演示模式说明弹窗 ============ -->
+<div class="mask" id="maskDemo">
+  <div class="sheet">
+    <div class="demo-sheet">
+      <div class="ds-ico">🎬</div>
+      <h3 id="demoTitle">功能展示版</h3>
+      <div class="ds-txt" id="demoText"></div>
+      <div class="ds-tips">
+        <div class="ds-tip"><span>🖥️</span><span>本页面仅演示<b>抽卡玩法</b>与<b>卡面视觉</b>，抽到的卡会真实进收藏册</span></div>
+        <div class="ds-tip"><span>🤖</span><span>要真正抽卡并下单，请在 WorkBuddy 里安装 <b>mcd-gacha-collector</b> Skill</span></div>
+        <div class="ds-tip"><span>📖</span><span>完整接入步骤见 <a href="使用说明.html" target="_blank">使用说明</a></span></div>
+      </div>
+      <button class="sbtn" id="demoOk">知道了</button>
+      <a class="sbtn ghost" id="demoInstall" href="https://github.com/ilAoC/mcd-gacha-collector" target="_blank">📦 前往 GitHub 安装</a>
+    </div>
   </div>
 </div>
 
@@ -1007,7 +1084,7 @@ footer a{color:var(--mcd-gold);text-decoration:none}
     <div id="mBody"></div>
     <div class="mbtns">
       <button class="mb-no" onclick="closeM()">关闭</button>
-      <button class="mb-yes" id="mYes">立即购买</button>
+      <button class="mb-yes" id="mYes">了解如何点餐</button>
     </div>
   </div>
 </div>
@@ -1404,7 +1481,7 @@ function showCard(c){
     </details>
 
     <div class="mnote" style="background:rgba(218,41,28,.06);border-left:3px solid #DA291C;padding:8px 10px;border-radius:6px;margin-top:8px;font-size:12px">
-      💡 网页可预览卡面，<b>真下单</b>请在对话里说：<code>买 ${esc(c.name)}</code>
+      💡 网页仅供预览卡面，<b>实际点餐</b>请在 WorkBuddy 对话里说：<code>买 ${esc(c.name)}</code>
     </div>`;
   $("mYes").onclick = () => {
     closeM();
@@ -1565,7 +1642,30 @@ $("inpBudget").addEventListener("input", () => {
 /* ---------- 初始化 ---------- */
 $("storeTag").textContent = "📍 点击选择你附近的麦当劳";
 
+/* 演示模式：显示提示条 + 置灰定位入口 */
+if(DEMO_MODE){
+  document.body.classList.add("demo-mode");
+  $("demoBar").classList.add("on");
+  $("demoBarX").addEventListener("click", () => {
+    $("demoBar").classList.remove("on");
+  });
+}
+
 /* ================= 真实门店 + 真实下单 ================= */
+/**
+ * 演示模式：本公开网页仅用于**展示**抽卡玩法与卡面视觉。
+ * 不做门店定位（会暴露用户大致位置），也不做实际点餐
+ * （会真实下单、占用库存、产生待支付款项）。
+ * 真正可用的能力在 WorkBuddy + Skill 里。
+ */
+const DEMO_MODE = true;
+const DEMO_TIP_STORE = "本页面为功能展示版，不提供门店定位。\n\n" +
+  "想在你所在城市抽卡并真实下单，请在 WorkBuddy 中安装 mcd-gacha-collector Skill，" +
+  "由 AI 引导你完成门店定位与下单。";
+const DEMO_TIP_ORDER = "本页面为功能展示版，不提供实际点餐。\n\n" +
+  "点餐会产生真实订单、占用库存并生成待支付款项，因此公开展示版已关闭该功能。\n" +
+  "请在 WorkBuddy 中安装 mcd-gacha-collector Skill，让 AI 帮你下单。";
+
 const SEL_KEY = "mcd.selectedStore";
 let STORE = loadStore();          // 当前选中门店
 let BE_TYPE = 1;                  // 1=到店自取 5=得来速
@@ -1582,6 +1682,12 @@ function saveStore(s){
 function paintStoreTag(){
   const t = $("storeTag");
   if(!t) return;
+  if(DEMO_MODE){
+    t.textContent = "📍 演示模式 · 不提供门店定位";
+    t.classList.remove("sel");
+    t.title = "公开展示版不提供门店定位，请在 WorkBuddy 中使用 Skill";
+    return;
+  }
   if(STORE){
     t.textContent = `📍 ${STORE.name} · ${STORE.distanceText || ""}`;
     t.classList.add("sel");
@@ -1594,6 +1700,7 @@ function paintStoreTag(){
 
 /* ---------- IP 自动定位 + 自动选最近门店 ---------- */
 async function ipAutoLocate(){
+  if(DEMO_MODE) return;      // 演示版不做定位
   if(STORE) return;  // 已有选择，不打扰
   const tag = $("storeTag");
   if(tag) tag.textContent = "📍 正在定位你的位置…";
@@ -1647,6 +1754,17 @@ function showErr(boxId, msg){
   if(!b) return;
   b.innerHTML = msg ? `<div class="err">${esc2(msg)}</div>` : "";
 }
+
+/* ---------- 演示模式说明弹窗 ---------- */
+function showDemoNote(text, title){
+  $("demoText").textContent = text;
+  $("demoTitle").textContent = title || "功能展示版";
+  openMask("maskDemo");
+}
+$("demoOk").addEventListener("click", () => closeMask("maskDemo"));
+$("maskDemo").addEventListener("click", e => {
+  if(e.target === $("maskDemo")) closeMask("maskDemo");
+});
 async function api(path, payload){
   const r = await fetch(path, {
     method:"POST",
@@ -1663,6 +1781,10 @@ async function api(path, payload){
 /* ---------- 门店选择 ---------- */
 $("storeTag").addEventListener("click", () => {
   paintStoreTag();
+  if(DEMO_MODE){
+    showDemoNote(DEMO_TIP_STORE);
+    return;
+  }
   showErr("storeErr", "");
   openMask("maskStore");
   if(STORE){ $("inCity").value = STORE.city || ""; }
@@ -1718,6 +1840,10 @@ $("inKw").addEventListener("keydown", e => {
 
 /* ---------- 卡面「立即购买」：真实核价 + 二次确认 ---------- */
 function buyCard(c){
+  if(DEMO_MODE){
+    showDemoNote(DEMO_TIP_ORDER);
+    return;
+  }
   if(!STORE){
     alert("请先点击页面顶部「选择你附近的麦当劳」，查询并选中门店后再下单。\n\n（这样价格才是你所在门店的真实售价）");
     openMask("maskStore");
