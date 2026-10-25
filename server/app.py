@@ -42,6 +42,11 @@ WEB_ROOT = next((p for p in _candidates if os.path.isdir(p)), _candidates[0])
 
 PORT = int(os.environ.get("PORT", "8080"))
 
+# 演示模式开关（公开展示版 = True）
+# 关闭时：/api/stores 做门店定位，/api/order 真实下单
+# 开启时：两者一律返回 403，前端也同步禁用入口
+DEMO_MODE = os.environ.get("MCD_DEMO_MODE", "1") not in ("0", "false", "False")
+
 # 报价缓存：token -> {items, price, store, 过期时间}
 _QUOTES = {}
 _QUOTE_TTL = 15 * 60  # 15 分钟
@@ -235,8 +240,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/health":
             configured = bool(os.environ.get("MCD_MCP_TOKEN"))
             return self._json({"success": True, "mcpConfigured": configured,
+                                "demoMode": DEMO_MODE,
                                 "ts": int(time.time())})
         if path == "/api/ip-locate":
+            if DEMO_MODE:
+                return self._json({"success": False, "demoMode": True,
+                                    "message": "演示模式未开放定位"})
             loc = locate(client_ip=self._client_ip())
             return self._json({"success": True, "location": loc})
         return self._serve_static(path)
@@ -245,6 +254,12 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path not in ("/api/stores", "/api/order"):
             return self._err("未知接口", 404)
+        # 演示模式：公开展示版不开放门店定位与实际点餐
+        # （定位会暴露访客大致位置；点餐会真实下单、占用库存、产生待支付款项）
+        if DEMO_MODE:
+            msg = ("演示模式未开放该功能，请在 WorkBuddy 中安装 "
+                   "mcd-gacha-collector Skill 后使用。")
+            return self._err(msg, 403)
         if not self._rate_ok():
             return self._err("请求过于频繁，请稍后再试", 429)
         try:
