@@ -1642,21 +1642,15 @@ $("inpBudget").addEventListener("input", () => {
 /* ---------- 初始化 ---------- */
 $("storeTag").textContent = "📍 点击选择你附近的麦当劳";
 
-/* 演示模式：显示提示条 + 置灰定位入口 */
-if(DEMO_MODE){
-  document.body.classList.add("demo-mode");
-  $("demoBar").classList.add("on");
-  $("demoBarX").addEventListener("click", () => {
-    $("demoBar").classList.remove("on");
-  });
-}
-
 /* ================= 真实门店 + 真实下单 ================= */
 /**
  * 演示模式：本公开网页仅用于**展示**抽卡玩法与卡面视觉。
  * 不做门店定位（会暴露用户大致位置），也不做实际点餐
  * （会真实下单、占用库存、产生待支付款项）。
  * 真正可用的能力在 WorkBuddy + Skill 里。
+ *
+ * ⚠️ 必须在任何使用点之前声明（const 有暂时性死区，
+ *    声明前访问会抛 ReferenceError 并中断后续初始化）。
  */
 const DEMO_MODE = true;
 const DEMO_TIP_STORE = "本页面为功能展示版，不提供门店定位。\n\n" +
@@ -1670,6 +1664,15 @@ const SEL_KEY = "mcd.selectedStore";
 let STORE = loadStore();          // 当前选中门店
 let BE_TYPE = 1;                  // 1=到店自取 5=得来速
 let IP_LOC = null;                // IP 定位结果 {city, regionName, ...}
+
+/* 演示模式：显示提示条 + 置灰定位入口（须在 DEMO_MODE 声明之后） */
+if(DEMO_MODE){
+  document.body.classList.add("demo-mode");
+  $("demoBar").classList.add("on");
+  $("demoBarX").addEventListener("click", () => {
+    $("demoBar").classList.remove("on");
+  });
+}
 
 function loadStore(){
   try { return JSON.parse(localStorage.getItem(SEL_KEY) || "null"); }
@@ -1908,7 +1911,24 @@ function buyCard(c){
 
 paintStoreTag();
 renderAll();
-setInterval(renderAll, 1000);
+
+/**
+ * 轻量心跳：只刷新积分数字与提示文案，**不重建任何 DOM**。
+ *
+ * ⚠️ 之前用 setInterval(renderAll, 1000) 每秒全量重建收藏册与展示架，
+ *    导致卡面图片每秒重新加载一次 —— 这才是「卡图闪烁」的真正根因
+ *    （特效动画只是让现象更明显）。这里改为按需更新。
+ */
+setInterval(() => {
+  const p = $("ptNum");
+  if(p) p.textContent = led.points;
+  const btn = $("btnRefill");
+  if(btn) renderRefillBtn();
+  const hint = $("hint");
+  if(hint && led.points < 1){
+    hint.innerHTML = `<span class="warn">积分不足</span> · 点击右上角「刷新积分」立即补满至 ${MAX_POINTS} 分`;
+  }
+}, 1000);
 
 /* 调试开关：?demo=1 自动抽卡一次（用于 headless 截图与回归测试） */
 if(location.search.includes("demo=1")){
