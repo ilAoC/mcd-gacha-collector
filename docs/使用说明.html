@@ -180,6 +180,10 @@ footer .c{font-size:13px;color:rgba(255,199,44,.6);letter-spacing:1px}
   <h1>麦卡收藏家</h1>
   <div class="hero-en">MCD GACHA COLLECTOR · 使用说明</div>
   <p>把整张菜单，变成可收集的卡牌。<br>从申请 Token 到成功点餐，五步走完。</p>
+  <div class="demo-warn">
+    🎬 <b>在线版是功能展示版</b>：可以抽卡、看特效、玩收藏册，
+    但<b>不提供门店定位与实际点餐</b>——这两项能力需要安装本 Skill 才能用。
+  </div>
   <div class="hero-links">
     <a class="btn main" href="https://qingka-mp.app.workbuddy.host/" target="_blank">🎮 在线试玩（免安装）</a>
     <a class="btn" href="https://github.com/ilAoC/mcd-gacha-collector" target="_blank">📦 GitHub 仓库</a>
@@ -467,7 +471,10 @@ AI：调 create-order → 返回 orderId + 支付链接
   <div class="sec-h"><span class="sec-n">FAQ</span><h2>常见问题</h2></div>
 
   <div class="faq"><summary>一定要装 Skill 吗？</summary>
-    <div class="body">网页端不用，直接开在线版就能玩。<b>但要「AI 帮你点餐」就必须装</b>——点餐靠 Skill 里的引导流程和强制二次确认机制。</div></div>
+    <div class="body">网页端<b>不用</b>装，直接开在线版就能玩抽卡与收藏册。<br>
+      但要「<b>门店定位</b>」和「<b>AI 帮你点餐</b>」就必须装——公开展示版出于
+      <b>隐私</b>（定位会暴露访客大致位置）与<b>资金安全</b>（点餐会产生真实订单）
+      两方面考虑，已关闭这两项功能，网页会明确提示。</div></div>
 
   <div class="faq"><summary>Token 会被上传吗？</summary>
     <div class="body">不会。Token 只写在你本机的 MCP 配置里，AI 调用时直接向 <code>mcp.mcd.cn</code> 发请求。</div></div>
