@@ -287,10 +287,19 @@ agent_created: true
 
 #### A-2 · MCP 已接入 → 验证连通
 
-直接调一次 `mcp__mcd-mcp__now-time-info` 探活。
+**最快的方式**：跑一条命令探活（比调 MCP 工具更快，且不依赖连接器）：
 
-- 成功 → 一句话告知：`✅ MCP 已连上！现在告诉我你在哪个位置，我们找附近的店。`
-- 失败（报 401 / token 无效）→ 引导回 A-1 第①步，重点提示「Token 可能过期了，重新激活一下」
+```bash
+python scripts/quickstart.py stores --city 沈阳 --keyword 麦当劳
+```
+
+- 成功（返回门店数组）→ 一句话告知：
+  `✅ MCP 已连上！现在告诉我你在哪个位置，我们找附近的店。`
+- 失败（报「未配置 MCD_MCP_TOKEN」）→ 引导回 A-1 第①步，
+  重点提示「Token 可能过期了，重新激活一下」
+
+> 也可以调 `mcp__mcd-mcp__now-time-info` 探活（需要连接器已启用）。
+> 两种都行，**脚本那条更快**。
 
 ---
 
@@ -319,13 +328,21 @@ agent_created: true
 **不要**让用户填表单、**不要**一次问 5 个问题。
 先问地址，再问取餐方式——或者用户一句话里都说了就直接用。
 
-#### B-2 · 调接口找店
+#### B-2 · 找店（一条命令）
 
-到店自取用 `query-nearby-stores`（`searchType=2`，传 `city` / `keyword` / `beType=1`）。
+```bash
+python scripts/quickstart.py stores --city <城市> --keyword <关键词> --be-type 1
+```
+
+输出是门店数组，每项含 `storeCode` / `name` / `address` / `distance` / `beCode`。
 
 > ⚠️ **得来速（beType=5）有坑**：外送场景下必须传 beCode，
 > 直接调用会报「外送场景下必传 beCode」。建议先用 `beType=1` 定位，
 > 拿到门店后再按需切换。
+
+> 💡 也可以直接调 MCP 工具 `query-nearby-stores`
+> （`searchType=2`，传 `city` / `keyword` / `beType=1`）——
+> 两种都行，脚本更快。
 
 #### B-3 · 把门店列表给用户挑（必须按距离排序）
 
@@ -452,51 +469,57 @@ agent_created: true
 
 ---
 
-### 📥 阶段 C 之后 · 取数与抽卡
+### 📥 阶段 C 之后 · 取数与抽卡（**一条命令**）
 
-#### 第 1 步：通过 MCP 取数
+> ⚡ **不要手工转录数据。** 以前需要你把 `list-nutrition-foods` 的 160 行文本
+> 手工转成 `nutrition.json`、再拼 `prices.json`——那一步极慢且易错。
+> 现在 `scripts/quickstart.py` **自己直连麦当劳 MCP**（Token 自动从
+> `~/.workbuddy/mcp.json` 读取，无需额外配环境变量），
+> **取数 → 归一化 → 建池 → 抽卡一条命令跑完，通常 1~3 秒。**
 
-按顺序调用：
-
-1. `now-time-info` —— 拿当前时间，判断餐品供应时段
-2. `query-meals`（传已确定的 storeCode + beType）—— **拉取该门店实时菜单与价格**
-3. `list-nutrition-foods` —— **拉取全量餐品营养数据**（约 160 项）
-
-> `list-nutrition-foods` 是全平台全量，`query-meals` 是当前门店实际在售。
-> **卡池只保留两者交集**——门店卖不到的餐品不进卡池，否则用户抽到买不到。
-
-#### 第 2 步：归一化并构建卡池
-
-把 MCP 结果写成两个临时文件：
-
-```
-tmp/nutrition.json   # {"items": [{productName, energyKcal, protein, fat,
-                #                carbohydrate, sodium, calcium, energyKj}, ...]}
-tmp/prices.json      # {"prices": {"巨无霸": 28.0, ...}}
-```
-
-字段映射详见 [`references/mcp-tools.md`](references/mcp-tools.md)。
+#### 第 1 步：抽卡（唯一需要的命令）
 
 ```bash
-python scripts/gacha.py tmp --inspect --budget 50
+python scripts/quickstart.py draw \
+  --store <storeCode> --count <N> --budget <预算> --speak
 ```
 
-输出告诉你卡池总数、三档分布、预算内有多少张可抽。
+| 参数 | 说明 |
+|---|---|
+| `--store` | 阶段 B 选定的门店编号 |
+| `--count` | 抽几张（已与用户确认过） |
+| `--budget` | 预算上限（元）；不限则省略 |
+| `--speak` | 输出**可直接转述给用户的 Markdown**（省去你再排版） |
 
-#### 第 3 步：抽卡
+**脚本自动完成**：
+1. 拉该门店实时菜单与价格（10 分钟缓存）
+2. 拉全量营养库（12 小时缓存，全平台固定）
+3. **名称归一化求交集**（菜单「可乐」↔ 营养库「可乐中杯」，
+   菜单「不素之霸双层牛堡三件套」↔ 营养库「不素之霸双层牛堡」）
+4. 建卡池 → 按预算过滤 → 加权抽卡（SSR 5% / UR 20% / R 75%）
+5. 打印每张卡的名称、稀有度、价格、热量、健康度、品类、**餐品编码**
+
+> 💡 输出里的 `product_code` 就是下单时要用的餐品编码，**记下来**，
+> 阶段 D 下单直接用。
+
+**没装 MCP 连接器也能用**：脚本走 HTTP 直连，只要
+`~/.workbuddy/mcp.json` 里有 `mcd-mcp` 配置（或设了 `MCD_MCP_TOKEN`）即可。
+
+#### 第 1.5 步：积分与收藏册（可选）
 
 ```bash
-python scripts/gacha.py tmp --draw 10 --budget 50 --ledger tmp/ledger.json
+python scripts/gacha.py tmp --collection --ledger tmp/ledger.json
 ```
 
-值得讲给用户的字段：
+**积分规则**：初始 5 分，每抽 1 张扣 1 分，**每 4 小时自动恢复 1 分**。
+积分不足时如实告知还差多少、下次恢复时间，**不要编造**。
 
-- `drawn[]` —— 抽到的卡（卡名、稀有度、价格、热量、健康度）
-- `recover` —— 本次恢复多少积分、距下次恢复几小时
-- `stats` —— 收藏册总览（已收集数、三档分布、平均健康度）
-- `next_recover_at` —— 下次恢复时间（积分不足时告诉用户）
+#### 旧流程（仅在脚本报错时兜底）
 
-**积分不足**（`success: false`）：如实告知还差多少、下次恢复时间，不要编造。
+若 `quickstart.py` 报「未配置 MCD_MCP_TOKEN」且无法自动发现，
+再退回手动流程：调 MCP 工具拿到数据 → 存成 `nutrition.json` / `prices.json`
+→ `python scripts/gacha.py tmp --draw N --budget B`。
+**正常情况下不要走这条路。**
 
 #### 第 4 步：只用文字回复 + 问用户买哪个
 
@@ -556,7 +579,8 @@ python scripts/gacha.py tmp --draw 10 --budget 50 --ledger tmp/ledger.json
 
 ### 🛒 真实下单（强制二次确认，不可跳过）
 
-用户点击「立即购买」或说「买这张 / 就这个」时，**严格按顺序**执行：
+用户说「买这张 / 就这个 / 买<卡名>」时，**严格按顺序**执行。
+**全程两条命令，不要手写 JSON。**
 
 ```mermaid
 sequenceDiagram
@@ -565,31 +589,97 @@ sequenceDiagram
     participant M as 麦当劳 MCP
 
     U->>A: 买这张
-    A->>A: 确认已选门店（没有就先第 5 步定位）
-    A->>M: query-meals(storeCode, beType)
-    M-->>A: 门店实时在售 + 价格
-    A->>M: calculate-price(storeCode, items)
-    M-->>A: 核价结果（含优惠/配送费）
-    A-->>U: 复述餐品+门店+总价 ⏸ 等待确认
+    A->>A: 确认已选门店（没有就回阶段 B 定位）
+    A->>M: quickstart.py quote（核价 + 取餐方式）
+    M-->>A: 总价 + takeWayList
+    A-->>U: 复述餐品+门店+总价+取餐方式 ⏸ 等待确认
     U->>A: 确认下单
-    A->>M: create-order(...)
+    A->>M: quickstart.py order（带 takeWayCode）
     M-->>A: orderId + payH5Url
-    A-->>U: 订单号 + 支付链接
+    A-->>U: 订单号 + 支付链接 + 支付时限
+```
+
+#### D-1 · 核价（**必须先做**）
+
+```bash
+python scripts/quickstart.py quote \
+  --store <storeCode> --code <product_code> --name <卡名> --qty 1
+```
+
+输出：`price.total`（元）、`products`（明细）、**`takeWayList`（取餐方式）**。
+
+#### D-2 · 复述给用户并**同时问取餐方式**
+
+`takeWayList` 一般是两项：`eat-in`（堂食）/ `locker-in`（外带·取餐柜）。
+**必须让用户选**，因为 `takeWayCode` 是下单必填项：
+
+```
+🧾 订单确认
+┌────────────────────────────────────┐
+│  🥤 可乐 ×1                │
+│     ¥9.50               │
+│────────────────────────────────────│
+│  商品原价      ¥9.50      │
+│  优惠           -¥0.00     │
+│  配送费/餐具费   ¥0.00      │
+│────────────────────────────────────│
+│  💰 应付合计   ¥9.50     │
+└────────────────────────────────────┘
+
+📍 麦当劳沈阳国际软件园餐厅
+🍽️ 取餐方式：**① 堂食（店内用餐） ② 外带（店内取餐柜）**
+
+⏸ 确认下单吗？回复「确认下单 堂食」或「确认下单 外带」
+```
+
+#### D-3 · 下单（**只在用户明确确认后**）
+
+```bash
+python scripts/quickstart.py order \
+  --store <storeCode> --code <product_code> --name <卡名> \
+  --take-way <eat-in | locker-in>
+```
+
+输出：`order.orderId`、`order.payUrl`（支付链接）、
+`order.expirePayTime`（支付截止，通常下单后 15 分钟）、
+`order.storeName`、`order.totalAmount`。
+
+回复用户时**必须给全**：
+
+```
+✅ 订单已创建
+订单号：1030108210000808653150644368
+💰 应付：¥9.50
+📍 麦当劳沈阳国际软件园餐厅
+🕐 请在 15:45 前完成支付，超时订单会自动取消
+
+💳 支付链接：https://m.mcd.cn/mcp/scanToPay?orderId=...
+```
+
+#### D-4 · 取消（用户反悔时）
+
+```bash
+python scripts/quickstart.py cancel --order-id <orderId>
 ```
 
 **铁律**：
 
-1. **必须先调 `calculate-price` 核价**，并把最终总价（含优惠、配送费）复述给用户。
-2. **必须等用户明确说「确认/下单/买」才可调 `create-order`**。
+1. **必须先核价**，并把最终总价（含优惠、配送费）复述给用户。
+2. **必须等用户明确说「确认/下单/买」才可下单**。
    用户只说「看看」「多少钱」时**绝不下单**。
-3. 用户说「换一家」「改价格」→ 回到第 5 步重新定位，不要在旧门店硬下。
-4. 下单成功后把 `payH5Url` 完整给出，并提示**订单有效期**（超时可能自动取消）。
-5. 用户要取消 → `cancel-order`（需 `orderId`，并复述取消原因后再执行）。
+3. **`takeWayCode` 必填** —— 没问取餐方式就下单会失败。取自核价输出的 `takeWayList`。
+4. 用户说「换一家」「改价格」→ 回到阶段 B 重新定位，不要在旧门店硬下。
+5. 下单成功后把 `payUrl` **完整给出**，并提示**支付时限**（超时自动取消）。
+6. 用户要取消 → 跑 `cancel` 命令，先复述取消原因再执行。
 
-> `create-order` 会**真实创建订单并占用库存/产生待支付款项**，
+> `order` 命令会**真实创建订单并占用库存/产生待支付款项**，
 > 是不可逆的对外动作。未经用户明确同意绝不执行。
 > 网页端同理：后端用一次性 `quoteToken` 强制「先核价、后确认、再下单」，
 > 伪造 token 会被直接拒绝。
+
+> 💡 **测试下单时**：务必在验证完成后立刻跑 `cancel --order-id`，
+> 不要留下未支付订单。
+
 
 ## 卡面图片约定
 
@@ -643,7 +733,7 @@ python scripts/gacha.py tmp --inspect
 
 **前 7 项全绿才开抽。** 第 5、6 项是**用户决策**，替用户做主是本 Skill 最大的忌讳。
 
-### 🚫 两条红线
+### 🚫 三条红线
 
 **红线 1：没确认参数不许抽**
 用户只说「抽卡」时，**不要**默认不限预算 + 单抽然后直接开抽。
@@ -654,6 +744,27 @@ python scripts/gacha.py tmp --inspect
 **不要**调 `render.py`，**不要** `present_files` 打开任何 HTML——
 那个渲染器是旧版视觉（无特效、无分层色带），给用户看像半成品。
 用户想看视觉，引导他打开在线版：<https://qingka-mp.app.workbuddy.host/>
+
+> 🔑 **不只是「不生成 HTML」，更不要「跑一段慢脚本」**。
+> 卡面渲染、HTML 导出、逐张图片处理这类动作**一律不做**——
+> 用户要的是「抽到什么 + 买哪个」，不是一张图。
+> 抽卡用 `quickstart.py draw --speak`，输出就是可直接转述的文字。
+
+**红线 3：不手工转录数据**
+**不要**把 MCP 返回的大段数据手工整理成 JSON / CSV / Markdown 表格。
+`list-nutrition-foods` 有 160 项，手工转录极慢且容易错。
+一律用 `scripts/quickstart.py`：
+
+| 想做什么 | 命令 |
+|---|---|
+| 找店 | `quickstart.py stores --city X --keyword Y` |
+| 抽卡 | `quickstart.py draw --store Z --count N --budget B --speak` |
+| 核价 | `quickstart.py quote --store Z --code C --name N` |
+| 下单 | `quickstart.py order --store Z --code C --take-way eat-in` |
+| 取消 | `quickstart.py cancel --order-id O` |
+
+**全程 1~3 秒**。只有脚本报「未配置 MCD_MCP_TOKEN」时才退回手动流程。
+
 
 ### 用户情绪观察
 
@@ -692,13 +803,27 @@ python scripts/gacha.py tmp --inspect
 
 ## 资源索引
 
+**日常只用一个脚本：**
+
+- ⭐ [`scripts/quickstart.py`](scripts/quickstart.py) —— **一键全链路**。
+  `stores`（找店）/ `draw`（抽卡）/ `quote`（核价）/ `order`（下单）/ `cancel`（取消）。
+  自己直连麦当劳 MCP（Token 自动从 `~/.workbuddy/mcp.json` 读取），
+  取数 → 归一化 → 建池 → 抽卡 **1~3 秒**跑完。**优先用它。**
+
+**底层组件：**
+
+- [`scripts/mcp_client.py`](scripts/mcp_client.py) —— MCP 直连客户端（供 quickstart 使用）。
 - [`scripts/gacha.py`](scripts/gacha.py) —— 核心引擎：健康度评分 / 稀有度划分 / 加权抽卡 / 积分账本 / 收藏册。
-- [`scripts/render.py`](scripts/render.py) —— 旧版 HTML 渲染器。**🚫 对话流程里绝对不要调用**——
-  它的视觉与网页端不一致（无卡面特效、无分层色带），给用户看像半成品。仅供开发者离线调试。
-- [`scripts/selftest.py`](scripts/selftest.py) —— 130 项自测，改动逻辑后必跑。
+- [`scripts/category_map.py`](scripts/category_map.py) —— 餐品 → 品类映射（与网页端同一套划分）。
+- [`scripts/selftest.py`](scripts/selftest.py) —— 132 项自测，改动逻辑后必跑。
 - [`scripts/sample_data/`](scripts/sample_data/) —— 离线示例：营养数据与价格（结构对齐 MCP 返回）。
 - [`references/mcp-tools.md`](references/mcp-tools.md) —— MCP Tool 清单与字段映射表。
-- [`assets/cards/`](assets/cards/) —— 卡面图片存放目录（用户自制）。
+
+**🚫 对话流程里绝对不要碰：**
+
+- [`scripts/render.py`](scripts/render.py) —— 旧版 HTML 渲染器。
+  视觉与网页端不一致（无卡面特效、无分层色带），**慢且给用户看像半成品**。
+  仅供开发者离线调试，**对话流程禁用**。
 
 ---
 
